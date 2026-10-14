@@ -1,0 +1,62 @@
+{
+  "name": "fieldlogger",
+  "productName": "FieldLogger",
+  "version": "1.0.0",
+  "description": "Log consultant actions on a calendar and turn them into Kantata-ready notes.",
+  "main": "main.js",
+  "author": "FieldLogger",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "preview": "node scripts/serve.js",
+    "vendor": "node scripts/vendor.js",
+    "icon": "electron scripts/render-icon.js",
+    "snap": "electron scripts/snap.js",
+    "build": "electron-builder --win nsis",
+    "build:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/outfit": "^5.3.0",
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3",
+    "htm": "^3.1.1",
+    "lucide-static": "^1.57.0",
+    "preact": "^11.0.1"
+  },
+  "build": {
+    "appId": "com.fieldlogger.app",
+    "productName": "FieldLogger",
+    "copyright": "FieldLogger",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json",
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "FieldLogger",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "artifactName": "FieldLogger-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "FieldLogger-Portable-${version}.${ext}"
+    }
+  }
+}
