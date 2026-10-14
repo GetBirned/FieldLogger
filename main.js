@@ -134,8 +134,47 @@ function pinMatches(stored, pin) {
 
 const validPin = (pin) => typeof pin === 'string' && /^\d{4,8}$/.test(pin);
 
+// Safety net: a profile data file that isn't in profiles.json (for example
+// after an interrupted write) is re-registered as "Recovered profile" so its
+// logs are never stranded. If it was saved more recently than the last-used
+// profile, it becomes the last-used one so the app reopens into it.
+function adoptOrphans(store) {
+  const known = new Set(store.profiles.map((p) => p.id));
+  const mtime = (id) => {
+    try { return fs.statSync(profileDataFile(id)).mtimeMs; } catch { return 0; }
+  };
+  let changed = false;
+  let lastTime = store.lastProfileId ? mtime(store.lastProfileId) : 0;
+  for (const name of fs.readdirSync(PROFILE_DATA_DIR)) {
+    const id = name.replace(/\.json$/, '');
+    if (!name.endsWith('.json') || id !== safeId(id) || known.has(id)) continue;
+    const data = readJson(path.join(PROFILE_DATA_DIR, name), null);
+    if (!data || !((data.entries || []).length || (data.clients || []).length)) continue;
+    const time = mtime(id);
+    store.profiles.push({
+      id,
+      name: 'Recovered profile',
+      role: '',
+      color: '#64748b',
+      photo: null,
+      createdAt: new Date(time || Date.now()).toISOString(),
+      lastOpenedAt: null,
+      pin: null,
+      pinOnLaunch: true,
+      recovered: true,
+    });
+    if (time > lastTime) {
+      store.lastProfileId = id;
+      lastTime = time;
+    }
+    changed = true;
+  }
+  if (changed) saveProfiles(store);
+  return store;
+}
+
 ipcMain.handle('profiles:list', () => {
-  const store = loadProfiles();
+  const store = adoptOrphans(loadProfiles());
   return { lastProfileId: store.lastProfileId, profiles: store.profiles.map(publicProfile) };
 });
 
@@ -438,6 +477,11 @@ function runSelfTest(win) {
       out.photoCleared = (await api.profiles.update(q.id, { photo: null })).photo === null;
       out.badPhotoRejected = await api.profiles.update(q.id, { photo: 'javascript:alert(1)' }).then(() => false, () => true);
       out.pinOnLaunchToggle = (await api.profiles.update(p.id, { pinOnLaunch: false })).pinOnLaunch === false;
+      await api.data.save('porphantest01', { ...data, profileId: 'porphantest01' });
+      const after = await api.profiles.list();
+      const adopted = after.profiles.find((x) => x.id === 'porphantest01');
+      out.orphanAdopted = Boolean(adopted) && adopted.name === 'Recovered profile' && !adopted.hasPin && after.lastProfileId === 'porphantest01';
+      await api.profiles.remove('porphantest01');
       await api.profiles.remove(q.id);
       await api.profiles.remove(p.id);
       out.removed = (await api.profiles.list()).profiles.length === 0;
