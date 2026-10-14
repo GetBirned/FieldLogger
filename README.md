@@ -37,7 +37,7 @@ Everything stays on your computer. There's no server, no cloud and no sign-up.
 | Engagement link | Paste the client's Kantata / Salesforce DX engagement URL in **Edit client** to get an **Open engagement** button on the client page and in Kantata Notes |
 | Profile picture | **Settings → Profile & PIN**: click, drop or paste a photo |
 | Staying signed in | FieldLogger reopens straight into your profile. With a PIN, it asks for the PIN on launch (turn that off in Settings). **Lock** keeps your profile selected; **Switch profile** returns to the picker |
-| Make it yours | **Settings → Appearance** for light/dark/system mode, 12 accent colors or a custom one, the aurora glow and density |
+| Make it yours | **Settings → Appearance** for light/dark/system mode, the **Trimble** and **B2W** brand palettes, 12 accent colors or a custom one, the Trimble Gray dark mode, aurora glow and density |
 | Change the note format | **Settings → Kantata notes**. Tokens: `{time} {event} {notes} {client} {project} {duration} {hours} {date}` |
 
 Shortcuts: `Ctrl+L` log · `Ctrl+1-4` switch pages · `T` today · `←/→` move · `D/W/M` day/week/month · `Esc` close · `Ctrl+Enter` save.

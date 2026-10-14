@@ -31,14 +31,21 @@ function applyTheme(settings) {
   const root = document.documentElement;
   root.dataset.theme = dark ? 'dark' : 'light';
   root.dataset.aurora = s.aurora ? 'on' : 'off';
+  root.dataset.darkStyle = s.darkStyle === 'trimble' ? 'trimble' : 'midnight';
   root.style.setProperty('--accent', s.accent);
+  // Brand colors carry their exact gradient partner; otherwise CSS derives one.
+  if (s.accent2) root.style.setProperty('--accent-2', s.accent2);
+  else root.style.removeProperty('--accent-2');
   root.style.setProperty('--on-accent', relLuminance(s.accent) > 0.42 ? '#17130d' : '#ffffff');
-  bridge.app.setTitleBar(dark ? { color: '#0b0d12', symbolColor: '#c3c8d3' } : { color: '#f4f5f8', symbolColor: '#3b4250' });
+  const darkBg = s.darkStyle === 'trimble' ? '#1c2024' : '#0b0d12';
+  bridge.app.setTitleBar(dark ? { color: darkBg, symbolColor: '#c3c8d3' } : { color: '#f4f5f8', symbolColor: '#3b4250' });
   if (isElectron && s.zoom !== lastZoom) {
     lastZoom = s.zoom;
     bridge.app.setZoom(s.zoom || 1);
   }
-  try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify({ theme: s.theme, accent: s.accent, aurora: s.aurora })); } catch {}
+  try {
+    localStorage.setItem(APPEARANCE_KEY, JSON.stringify({ theme: s.theme, accent: s.accent, accent2: s.accent2, darkStyle: s.darkStyle, aurora: s.aurora }));
+  } catch {}
 }
 
 function App() {

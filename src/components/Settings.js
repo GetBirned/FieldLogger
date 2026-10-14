@@ -6,7 +6,7 @@ import {
 } from '../lib/store.js';
 import { processPhoto } from '../lib/image.js';
 import { bridge, isElectron } from '../lib/bridge.js';
-import { ACCENTS, ACTION_ICONS, NOTE_TOKENS, DEFAULT_TEMPLATE, PALETTE, APP_NAME, uid } from '../lib/defaults.js';
+import { ACCENTS, BRAND_PALETTES, ACTION_ICONS, NOTE_TOKENS, DEFAULT_TEMPLATE, PALETTE, APP_NAME, uid } from '../lib/defaults.js';
 import { renderLine } from '../lib/notes.js';
 import { fmtHourLabel } from '../lib/time.js';
 import { Avatar, Button, ColorPicker, Field, Icon, IconButton, ImageDrop, Kbd, Modal, Segmented, Switch, TypeBadge, cx, usePasteImage } from './ui.js';
@@ -67,8 +67,39 @@ function ThemeCard({ value, current, label, icon, onPick }) {
   </button>`;
 }
 
+const sameColor = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+
+function BrandPalettes({ s }) {
+  return html`<${Section} title="Brand palettes" desc="Match Trimble or B2W in one click, or pick a single brand color to use as your accent.">
+    <div class="brand-grid">
+      ${BRAND_PALETTES.map((p) => {
+        const applied = sameColor(s.accent, p.apply.accent) && sameColor(s.accent2, p.apply.accent2) && s.darkStyle === p.apply.darkStyle;
+        return html`<div class=${cx('brand-card', applied && 'is-active')}>
+          <div class="brand-strip">
+            ${p.colors.map((c) => html`<span style=${{ background: c.value }} data-tip=${`${c.name} · ${c.value}`}></span>`)}
+          </div>
+          <div class="brand-body">
+            <div class="brand-head">
+              <div><b>${p.name}</b><span class="muted">${p.desc}</span></div>
+              <${Button} size="sm" variant=${applied ? 'accent-soft' : 'secondary'} icon=${applied ? 'check' : 'wand-sparkles'}
+                onClick=${() => setSettings(p.apply)}>${applied ? 'Applied' : 'Apply'}<//>
+            </div>
+            <div class="brand-swatches">
+              ${p.swatches.map((sw) => html`<button type="button" class=${cx('accent-opt', sameColor(sw.accent, s.accent) && 'is-active')}
+                  style=${{ '--sw': sw.accent, '--sw2': sw.accent2 }} onClick=${() => setSettings({ accent: sw.accent, accent2: sw.accent2 })}>
+                <span class="accent-dot"><${Icon} name="check" size=${14} stroke=${3} /></span><span>${sw.name}</span>
+              </button>`)}
+            </div>
+          </div>
+        </div>`;
+      })}
+    </div>
+  <//>`;
+}
+
 function Appearance({ s }) {
-  const isPreset = ACCENTS.some((a) => a.value.toLowerCase() === s.accent.toLowerCase());
+  const known = [...ACCENTS.map((a) => a.value), ...BRAND_PALETTES.flatMap((p) => p.swatches.map((sw) => sw.accent))];
+  const isPreset = known.some((v) => sameColor(v, s.accent));
   return html`
     <${Section} title="Theme" desc="Light, dark, or follow Windows.">
       <div class="theme-cards">
@@ -77,14 +108,15 @@ function Appearance({ s }) {
         <${ThemeCard} value="system" label="System" icon="monitor" current=${s.theme} onPick=${(v) => setSettings({ theme: v })} />
       </div>
     <//>
+    <${BrandPalettes} s=${s} />
     <${Section} title="Accent color" desc="Used for buttons, highlights, the now-line and the logo.">
       <div class="accent-grid">
-        ${ACCENTS.map((a) => html`<button type="button" class=${cx('accent-opt', a.value.toLowerCase() === s.accent.toLowerCase() && 'is-active')} style=${{ '--sw': a.value }} onClick=${() => setSettings({ accent: a.value })}>
+        ${ACCENTS.map((a) => html`<button type="button" class=${cx('accent-opt', sameColor(a.value, s.accent) && 'is-active')} style=${{ '--sw': a.value }} onClick=${() => setSettings({ accent: a.value, accent2: null })}>
           <span class="accent-dot"><${Icon} name="check" size=${14} stroke=${3} /></span><span>${a.name}</span>
         </button>`)}
         <label class=${cx('accent-opt accent-custom', !isPreset && 'is-active')} style=${{ '--sw': s.accent }}>
           <span class="accent-dot"><${Icon} name=${isPreset ? 'plus' : 'check'} size=${14} stroke=${3} /></span><span>Custom</span>
-          <input type="color" value=${s.accent} onInput=${(e) => setSettings({ accent: e.currentTarget.value })} />
+          <input type="color" value=${s.accent} onInput=${(e) => setSettings({ accent: e.currentTarget.value, accent2: null })} />
         </label>
       </div>
       <div class="brand-preview">
@@ -96,6 +128,9 @@ function Appearance({ s }) {
       </div>
     <//>
     <${Section} title="Look & feel">
+      <${Row} label="Dark mode style" hint="The surface colors used when FieldLogger is dark.">
+        <${Segmented} value=${s.darkStyle || 'midnight'} onChange=${(v) => setSettings({ darkStyle: v })} options=${[{ value: 'midnight', label: 'Midnight' }, { value: 'trimble', label: 'Trimble Gray' }]} />
+      <//>
       <${Row} label="Aurora glow" hint="Soft accent-colored light behind the app.">
         <${Switch} checked=${s.aurora} onChange=${(v) => setSettings({ aurora: v })} />
       <//>

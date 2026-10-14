@@ -19,6 +19,43 @@ export const ACCENTS = [
   { id: 'concrete', name: 'Concrete', value: '#64748b' },
 ];
 
+// Company palettes. A swatch sets the accent plus its exact gradient partner
+// (accent2); "apply" sets the whole look in one click.
+export const BRAND_PALETTES = [
+  {
+    id: 'trimble',
+    name: 'Trimble',
+    desc: 'Trimble Blue accents with a Trimble Gray dark mode.',
+    colors: [
+      { name: 'Trimble Blue Dark', value: '#004f83' },
+      { name: 'Trimble Blue', value: '#0063a3' },
+      { name: 'Trimble Yellow', value: '#fbad26' },
+      { name: 'Trimble Gray', value: '#252a2e' },
+    ],
+    apply: { accent: '#0063a3', accent2: '#004f83', darkStyle: 'trimble' },
+    swatches: [
+      { name: 'Trimble Blue', accent: '#0063a3', accent2: '#004f83' },
+      { name: 'Trimble Blue Dark', accent: '#004f83', accent2: '#003a61' },
+      { name: 'Trimble Yellow', accent: '#fbad26', accent2: '#f0920e' },
+    ],
+  },
+  {
+    id: 'b2w',
+    name: 'B2W',
+    desc: 'B2W red accents on clean white.',
+    colors: [
+      { name: 'B2W Red', value: '#982017' },
+      { name: 'White', value: '#ffffff' },
+      { name: 'B2W Dark Red', value: '#7a0b0a' },
+    ],
+    apply: { accent: '#982017', accent2: '#7a0b0a', darkStyle: 'midnight' },
+    swatches: [
+      { name: 'B2W Red', accent: '#982017', accent2: '#7a0b0a' },
+      { name: 'B2W Dark Red', accent: '#7a0b0a', accent2: '#5a0706' },
+    ],
+  },
+];
+
 // Colors used for clients, avatars and action types.
 export const PALETTE = [
   '#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#f97316', '#ef4444',
@@ -71,6 +108,8 @@ export const DEFAULT_TEMPLATE = '{time}: {event} - {notes}';
 export const DEFAULT_SETTINGS = {
   theme: 'system', // 'light' | 'dark' | 'system'
   accent: '#f97316',
+  accent2: null, // exact gradient partner for brand colors; null = derived from accent
+  darkStyle: 'midnight', // 'midnight' | 'trimble' (Trimble Gray surfaces)
   aurora: true,
   density: 'comfortable', // calendar hour height
   colorBy: 'type', // 'type' | 'client'

@@ -50,7 +50,12 @@ const whiteLogo = `(async () => {
   __fl.updateClient(d.clients.find((k) => k.name.startsWith('Summit')).id, out);
   return out.logoBg;
 })()`;
-const clickEdit = `[...document.querySelectorAll('.hero-actions button')].find((b) => b.textContent.trim() === 'Edit').click()`;
+// Reports the computed accent colors so contrast fixes can be checked.
+const probe = `(() => { const cs = getComputedStyle(document.documentElement);
+  const nav = document.querySelector('.nav-item.is-active');
+  return ['--accent', '--accent-2', '--accent-lift', '--accent-text'].map((k) => k + '=' + cs.getPropertyValue(k).trim()).join(' | ')
+    + ' | nav text=' + (nav ? getComputedStyle(nav).color : '?'); })()`;
+const clickEdit =`[...document.querySelectorAll('.hero-actions button')].find((b) => b.textContent.trim() === 'Edit').click()`;
 const escape = `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`;
 
 const shots = [
@@ -76,6 +81,12 @@ const shots = [
   { name: 'settings-types-dark', js: [ui({ page: 'settings', settingsTab: 'types' })] },
   { name: 'settings-notes-dark', js: [ui({ page: 'settings', settingsTab: 'notes' })] },
   { name: 'accent-teal-dark', js: [`__fl.setSettings({ accent: '#14b8a6' })`, ui({ page: 'calendar', calView: 'day' })] },
+  { name: 'brand-settings-light', js: [theme('light'), `__fl.setSettings({ accent: '#0063a3', accent2: '#004f83', darkStyle: 'trimble' })`, ui({ page: 'settings', settingsTab: 'appearance' })] },
+  { name: 'trimble-dark-day', js: [theme('dark'), ui({ page: 'calendar', calView: 'day' }), probe] },
+  { name: 'trimble-dark-notes', js: [ui({ page: 'notes' })] },
+  { name: 'b2w-light-day', js: [theme('light'), `__fl.setSettings({ accent: '#982017', accent2: '#7a0b0a', darkStyle: 'midnight' })`, ui({ page: 'calendar' }), probe] },
+  { name: 'b2w-dark-week', js: [theme('dark'), ui({ calView: 'week' }), probe] },
+  { name: 'yellow-light-notes', js: [theme('light'), `__fl.setSettings({ accent: '#fbad26', accent2: '#f0920e' })`, ui({ page: 'notes' }), probe] },
   { name: 'gate-pin-dark', js: [`__fl.setProfilePin('2468')`, `__fl.lock()`] },
 ];
 

@@ -23,14 +23,19 @@
   --accent-2: oklch(from var(--accent) calc(l - 0.07) calc(c * 1.05) calc(h - 22));
   --accent-3: oklch(from var(--accent) calc(l + 0.1) c calc(h + 18));
   --accent-grad: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-  --accent-soft: color-mix(in oklab, var(--accent) 13%, transparent);
-  --accent-softer: color-mix(in oklab, var(--accent) 7%, transparent);
-  --accent-border: color-mix(in oklab, var(--accent) 42%, transparent);
-  --accent-text: color-mix(in oklab, var(--accent) 78%, var(--text));
-  --accent-glow: color-mix(in oklab, var(--accent) 45%, transparent);
-  --logo-a: var(--accent-3);
-  --logo-b: var(--accent);
-  --logo-c: var(--accent-2);
+  /* --accent-lift is the accent as used for lines, dots and tints. Dark mode
+     raises its lightness so deep brand colors (B2W red, Trimble Blue Dark)
+     stay visible; --accent-text is clamped for readable text in both modes. */
+  --accent-lift: var(--accent);
+  --accent-text: oklch(from var(--accent) min(l, 0.5) c h);
+  --accent-soft: color-mix(in oklab, var(--accent-lift) 13%, transparent);
+  --accent-softer: color-mix(in oklab, var(--accent-lift) 7%, transparent);
+  --accent-border: color-mix(in oklab, var(--accent-lift) 42%, transparent);
+  --accent-glow: color-mix(in oklab, var(--accent-lift) 45%, transparent);
+  /* The logo tile is always navy, so the pin's colors are lifted for deep accents. */
+  --logo-a: oklch(from var(--accent) max(calc(l + 0.1), 0.74) c calc(h + 18));
+  --logo-b: oklch(from var(--accent) max(l, 0.6) c h);
+  --logo-c: oklch(from var(--accent-2) max(l, 0.5) c h);
 
   --font: 'Inter Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Outfit Variable', 'Inter Variable', 'Segoe UI Variable Display', system-ui, sans-serif;
@@ -98,6 +103,26 @@
   --inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   --overlay: rgba(3, 4, 8, 0.62);
   --aurora-o: 0.2;
+  --accent-lift: oklch(from var(--accent) max(l, 0.66) c h);
+  --accent-text: oklch(from var(--accent) max(l, 0.76) calc(c * 0.92) h);
+}
+
+/* Trimble Gray dark mode: charcoal surfaces built on #252a2e. */
+[data-theme='dark'][data-dark-style='trimble'] {
+  --bg: #1c2024;
+  --bg-elev: #20252a;
+  --surface: #252a2e;
+  --surface-2: #2a3035;
+  --surface-3: #31383e;
+  --surface-glass: rgba(37, 42, 46, 0.8);
+  --border: #353c42;
+  --border-strong: #434b52;
+  --text: #f1f3f5;
+  --text-2: #cad0d6;
+  --muted: #98a1aa;
+  --faint: #68727c;
+  --grid: #2e3439;
+  --grid-half: #292f34;
 }
 
 /* -------------------------------------------------------------------- base */
@@ -130,7 +155,7 @@ code {
   padding: 1px 6px;
   border-radius: 6px;
 }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+:focus-visible { outline: 2px solid var(--accent-lift); outline-offset: 2px; border-radius: 6px; }
 .icon { flex: none; display: block; }
 .muted { color: var(--muted); }
 .faint { color: var(--faint); }
@@ -153,7 +178,7 @@ code {
 .aurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; transition: opacity 0.6s var(--ease); }
 [data-aurora='off'] .aurora { opacity: 0; }
 .aurora span { position: absolute; border-radius: 50%; opacity: var(--aurora-o); }
-.aurora span:nth-child(1) { width: 70vmax; height: 70vmax; left: -22vmax; bottom: -38vmax; background: radial-gradient(circle, var(--accent) 0%, transparent 62%); animation: drift1 26s ease-in-out infinite alternate; }
+.aurora span:nth-child(1) { width: 70vmax; height: 70vmax; left: -22vmax; bottom: -38vmax; background: radial-gradient(circle, var(--accent-lift) 0%, transparent 62%); animation: drift1 26s ease-in-out infinite alternate; }
 .aurora span:nth-child(2) { width: 55vmax; height: 55vmax; left: 30vw; top: 28vh; background: radial-gradient(circle, var(--accent-2) 0%, transparent 62%); opacity: calc(var(--aurora-o) * 0.75); animation: drift2 32s ease-in-out infinite alternate; }
 .aurora span:nth-child(3) { width: 40vmax; height: 40vmax; right: -12vmax; bottom: -10vmax; background: radial-gradient(circle, var(--accent-3) 0%, transparent 62%); opacity: calc(var(--aurora-o) * 0.6); animation: drift1 38s ease-in-out infinite alternate-reverse; }
 @keyframes drift1 { to { transform: translate(6vmax, -4vmax) scale(1.08); } }
@@ -184,6 +209,7 @@ code {
 .logo-mark { flex: none; filter: drop-shadow(0 6px 14px color-mix(in oklab, var(--accent) 30%, transparent)); }
 .wordmark { font-family: var(--font-display); font-weight: 680; letter-spacing: -0.025em; line-height: 1; white-space: nowrap; }
 .wordmark-accent { background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+[data-theme='dark'] .wordmark-accent { background-image: linear-gradient(135deg, var(--accent-text), var(--accent-lift)); }
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 3px; margin-top: 10px; }
 .nav-item {
@@ -255,7 +281,7 @@ code {
 .ring { position: relative; flex: none; }
 .ring svg { display: block; }
 .ring-track { stroke: var(--surface-3); }
-.ring-value { stroke: var(--accent); transition: stroke-dashoffset 0.8s var(--ease); filter: drop-shadow(0 0 4px var(--accent-glow)); }
+.ring-value { stroke: var(--accent-lift); transition: stroke-dashoffset 0.8s var(--ease); filter: drop-shadow(0 0 4px var(--accent-glow)); }
 .ring-label { position: absolute; inset: 0; display: grid; place-items: center; }
 .ring-num { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .ring-num small { font-size: 9px; font-weight: 600; color: var(--muted); }
@@ -493,7 +519,7 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .image-drop.is-round { border-radius: 50%; }
 .image-drop::after { content: ''; position: absolute; inset: 0; border-radius: inherit; transition: background 0.15s, box-shadow 0.15s; pointer-events: none; }
 .image-drop:hover::after { background: rgba(10, 12, 18, 0.16); }
-.image-drop.is-over::after { background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent); }
+.image-drop.is-over::after { background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-lift); }
 .image-drop-badge {
   position: absolute;
   right: -5px;
@@ -761,7 +787,7 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .gate-pin .gate-actions { width: 100%; justify-content: space-between; margin-top: 8px; }
 .pin-dots { display: flex; gap: 12px; margin: 10px 0 4px; position: relative; }
 .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); transition: all 0.2s var(--ease-spring); }
-.pin-dot.is-filled { background: var(--accent); border-color: var(--accent); transform: scale(1.1); box-shadow: 0 0 10px var(--accent-glow); }
+.pin-dot.is-filled { background: var(--accent-lift); border-color: var(--accent-lift); transform: scale(1.1); box-shadow: 0 0 10px var(--accent-glow); }
 .pin-hidden { position: absolute; top: 120px; left: 0; width: 100%; height: 40px; opacity: 0; }
 .shake { animation: shake 0.42s; }
 @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
@@ -910,7 +936,7 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
   z-index: 3;
   border-radius: 10px;
   background: var(--accent-soft);
-  border: 1.5px dashed var(--accent);
+  border: 1.5px dashed var(--accent-lift);
   padding: 5px 9px;
   display: flex;
   flex-direction: column;
@@ -922,8 +948,8 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 }
 .tg-ghost-dur { font-weight: 560; opacity: 0.8; }
 
-.now-line { position: absolute; left: -1px; right: 0; height: 2px; background: var(--accent); z-index: 5; pointer-events: none; box-shadow: 0 0 10px var(--accent-glow); }
-.now-dot { position: absolute; left: -6px; top: -5px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--surface), 0 0 14px var(--accent); animation: pulse 2s ease-in-out infinite; }
+.now-line { position: absolute; left: -1px; right: 0; height: 2px; background: var(--accent-lift); z-index: 5; pointer-events: none; box-shadow: 0 0 10px var(--accent-glow); }
+.now-dot { position: absolute; left: -6px; top: -5px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-lift); box-shadow: 0 0 0 3px var(--surface), 0 0 14px var(--accent-lift); animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 3px var(--surface), 0 0 0 7px var(--accent-soft); } }
 
 .month { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 12px 12px; }
@@ -1004,7 +1030,7 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .mini-day.is-other { color: var(--faint); }
 .mini-day.is-today { color: var(--accent-text); font-weight: 750; }
 .mini-day.is-selected { background: var(--accent-grad); color: var(--on-accent); box-shadow: 0 4px 12px -4px var(--accent-glow); }
-.mini-day.has-dot::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--accent); }
+.mini-day.has-dot::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--accent-lift); }
 .mini-day.is-selected.has-dot::after { background: var(--on-accent); }
 
 /* ---------------------------------------------------------------- log form */
@@ -1307,7 +1333,7 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .theme-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .theme-card { display: flex; flex-direction: column; gap: 10px; padding: 8px 8px 12px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface-2); transition: all 0.2s var(--ease); }
 .theme-card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
-.theme-card.is-active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.theme-card.is-active { border-color: var(--accent-lift); box-shadow: 0 0 0 3px var(--accent-soft); }
 .theme-label { display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; }
 .theme-preview { height: 96px; border-radius: 10px; display: flex; overflow: hidden; border: 1px solid var(--border); }
 .tp-light { background: #f4f5f8; --p-surface: #fff; --p-line: #e6e8ee; }
@@ -1324,7 +1350,19 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .accent-opt { position: relative; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); font-weight: 580; font-size: 13px; cursor: pointer; transition: all 0.18s var(--ease); }
 .accent-opt:hover { border-color: color-mix(in oklab, var(--sw) 50%, var(--border)); }
 .accent-opt.is-active { border-color: var(--sw); box-shadow: 0 0 0 3px color-mix(in oklab, var(--sw) 20%, transparent); }
-.accent-dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, var(--sw), oklch(from var(--sw) calc(l - 0.07) c calc(h - 22))); color: transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3); flex: none; }
+.brand-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.brand-card { overflow: hidden; border-radius: 16px; border: 1px solid var(--border); background: var(--surface-2); transition: border-color 0.2s, box-shadow 0.2s; }
+.brand-card.is-active { border-color: var(--accent-lift); box-shadow: 0 0 0 3px var(--accent-soft); }
+.brand-strip { display: flex; height: 58px; border-bottom: 1px solid var(--border); }
+.brand-strip span { flex: 1; }
+.brand-strip span + span { box-shadow: inset 1px 0 0 rgba(15, 23, 42, 0.08); }
+.brand-body { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.brand-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.brand-head b { display: block; font-family: var(--font-display); font-size: 16px; font-weight: 640; }
+.brand-head .muted { font-size: 12.5px; }
+.brand-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.brand-swatches .accent-opt { flex: 1 1 150px; }
+.accent-dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, var(--sw), var(--sw2, oklch(from var(--sw) calc(l - 0.07) c calc(h - 22)))); color: transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3); flex: none; }
 .accent-opt.is-active .accent-dot { color: #fff; }
 .accent-custom .accent-dot { background: conic-gradient(from 0deg, #ef4444, #f59e0b, #84cc16, #10b981, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444); color: #fff; }
 .accent-custom.is-active .accent-dot { background: var(--sw); }
