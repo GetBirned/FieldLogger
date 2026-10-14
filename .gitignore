@@ -3,3 +3,4 @@ dist/
 .tools/
 .snaps/
 .claude/
+docs/build-conversation.md
