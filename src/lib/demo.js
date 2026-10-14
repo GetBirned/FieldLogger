@@ -3,9 +3,18 @@
 import { uid } from './defaults.js';
 import { addDays } from './time.js';
 
+// Simple made-up marks so the sample data shows client logos.
+const DEMO_LOGOS = {
+  granite: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M4 48 24 16l10 15 8-10 18 27Z" fill="#334155"/><path d="m24 16 5 8-5-2-5 2Z" fill="#fff"/><path d="M8 55h48" stroke="#f97316" stroke-width="5" stroke-linecap="round"/></svg>`,
+  mesa: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="45" cy="19" r="9" fill="#f59e0b"/><path d="M5 50 16 29h28l15 21Z" fill="#0e7490"/><path d="M5 52h54" stroke="#164e63" stroke-width="4" stroke-linecap="round"/></svg>`,
+  ironwood: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" fill="#4c1d95"/><circle cx="32" cy="32" r="19" fill="none" stroke="#c4b5fd" stroke-width="3"/><circle cx="33" cy="31" r="11" fill="none" stroke="#c4b5fd" stroke-width="3"/><circle cx="33" cy="31" r="4" fill="#c4b5fd"/></svg>`,
+};
+const svgUrl = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+
 const CLIENTS = [
   {
     name: 'Granite Ridge Paving', color: '#f97316', kantataProject: 'GRP - B2W Estimate & Track Implementation', phase: 'Configuration',
+    logo: DEMO_LOGOS.granite, engagement: 'https://example.com/engagements/granite-ridge',
     location: 'Boise, ID', website: 'https://example.com', start: -34, golive: 41,
     notes: 'Estimating team of 6. Wants bid item templates mirrored from their old spreadsheets.\nPrimary pain point: equipment rate tables.',
     contacts: [
@@ -24,12 +33,14 @@ const CLIENTS = [
   },
   {
     name: 'Blue Mesa Excavation', color: '#10b981', kantataProject: 'BME - Track Implementation', phase: 'Data Setup',
+    logo: DEMO_LOGOS.mesa, engagement: 'https://example.com/engagements/blue-mesa',
     location: 'Albuquerque, NM', start: -12, golive: 70,
     notes: 'Needs cost code import from Viewpoint export. Waiting on final employee list.',
     contacts: [{ name: 'Rosa Delgado', role: 'Controller', email: 'rosa.d@example.com', phone: '(505) 555-0163', poc: true }],
   },
   {
     name: 'Ironwood Aggregates', color: '#8b5cf6', kantataProject: 'IWA - Estimate Upgrade', phase: 'Kickoff',
+    logo: DEMO_LOGOS.ironwood,
     location: 'Tulsa, OK', start: -3, golive: 95,
     notes: 'Sales handoff complete. Kickoff deck sent.',
     contacts: [{ name: 'Dale Hutchins', role: 'VP Construction', email: 'dhutchins@example.com', phone: '(918) 555-0131', poc: true }],
@@ -82,6 +93,9 @@ export function buildDemoData(actionTypes) {
     phase: c.phase,
     location: c.location || '',
     website: c.website || '',
+    engagementUrl: c.engagement || '',
+    logo: c.logo ? svgUrl(c.logo) : null,
+    logoBg: 'light',
     startDate: iso(addDays(today, c.start)).slice(0, 10),
     goLiveDate: iso(addDays(today, c.golive)).slice(0, 10),
     notes: c.notes,

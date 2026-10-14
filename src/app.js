@@ -3,6 +3,7 @@
 import { html, render, useEffect } from './lib/h.js';
 import { bridge, isElectron } from './lib/bridge.js';
 import * as store from './lib/store.js';
+import * as image from './lib/image.js';
 import { useSession, signIn, openLog, nav } from './lib/store.js';
 import { DEFAULT_SETTINGS } from './lib/defaults.js';
 import { ProfileGate } from './components/ProfileGate.js';
@@ -107,6 +108,10 @@ document.addEventListener('mouseover', (e) => {
     tip.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
   }, 380);
 });
+// Files dropped outside an image drop zone shouldn't navigate the window.
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => e.preventDefault());
+
 document.addEventListener('mousedown', hideTip, true);
 document.addEventListener('scroll', hideTip, true);
 window.addEventListener('blur', hideTip);
@@ -114,15 +119,16 @@ window.addEventListener('blur', hideTip);
 // --------------------------------------------------------------------- boot
 
 // Dev hook used by scripts/snap.js to drive the UI for screenshots.
-if (new URLSearchParams(location.search).has('debug')) window.__fl = { ...store, bridge };
+if (new URLSearchParams(location.search).has('debug')) window.__fl = { ...store, bridge, image };
 
 async function boot() {
   applyTheme(readAppearance());
   if (isElectron) document.documentElement.classList.add('is-electron');
+  // Reopen straight into the last profile unless it asks for a PIN on launch.
   try {
     const { lastProfileId, profiles } = await bridge.profiles.list();
     const last = profiles.find((p) => p.id === lastProfileId);
-    if (last && !last.hasPin) await signIn(last);
+    if (last && (!last.hasPin || last.pinOnLaunch === false)) await signIn(last);
   } catch (err) {
     console.error('Could not restore last profile', err);
   }

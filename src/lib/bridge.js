@@ -24,7 +24,10 @@ async function sha256(text) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-const pub = (p) => ({ id: p.id, name: p.name, role: p.role || '', color: p.color, createdAt: p.createdAt, lastOpenedAt: p.lastOpenedAt || null, hasPin: Boolean(p.pin) });
+const pub = (p) => ({
+  id: p.id, name: p.name, role: p.role || '', color: p.color, photo: p.photo || null, createdAt: p.createdAt,
+  lastOpenedAt: p.lastOpenedAt || null, hasPin: Boolean(p.pin), pinOnLaunch: p.pinOnLaunch !== false,
+});
 const getStore = () => lsGet('profiles', { lastProfileId: null, profiles: [] });
 
 function download(name, text, type) {
@@ -50,8 +53,10 @@ const web = {
         name: String(input.name || '').trim(),
         role: String(input.role || '').trim(),
         color: input.color || '#f97316',
+        photo: input.photo || null,
         createdAt: new Date().toISOString(),
         pin: input.pin ? await sha256(`fl:${input.pin}`) : null,
+        pinOnLaunch: true,
       };
       s.profiles.push(p);
       lsSet('profiles', s);
@@ -61,6 +66,8 @@ const web = {
       const s = getStore();
       const p = s.profiles.find((x) => x.id === id);
       Object.assign(p, { name: patch.name ?? p.name, role: patch.role ?? p.role, color: patch.color ?? p.color });
+      if ('photo' in patch) p.photo = patch.photo || null;
+      if (typeof patch.pinOnLaunch === 'boolean') p.pinOnLaunch = patch.pinOnLaunch;
       lsSet('profiles', s);
       return pub(p);
     },

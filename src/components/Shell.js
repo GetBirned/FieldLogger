@@ -1,7 +1,7 @@
 // App frame: sidebar navigation, top bar (title, timer, Log Action) and the
 // global overlays (log dialog, confirm dialog, toasts).
 import { html, useEffect, useMemo, useState } from '../lib/h.js';
-import { useSession, useUi, nav, openLog, setSettings, signOut, stopTimer, discardTimer, toast, closeConfirm, dismissToast, setUi } from '../lib/store.js';
+import { useSession, useUi, nav, openLog, setSettings, signOut, lock, stopTimer, discardTimer, toast, closeConfirm, dismissToast } from '../lib/store.js';
 import { isElectron } from '../lib/bridge.js';
 import { entriesOnDay, totalMinutes } from '../lib/notes.js';
 import { todayKey, greeting, fmtDateLong, fmtClock, fmtHours, fmtDuration } from '../lib/time.js';
@@ -81,15 +81,16 @@ function Sidebar({ profile, data, page, collapsed }) {
 
     <div class="sidebar-foot">
       <${Menu} align="up" trigger=${({ toggle }) => html`<button type="button" class="profile-chip" onClick=${toggle}>
-          <${Avatar} name=${profile.name} color=${profile.color} size=${34} />
+          <${Avatar} name=${profile.name} color=${profile.color} src=${profile.photo} size=${34} />
           ${!collapsed && html`<span class="profile-chip-text"><span class="profile-chip-name">${profile.name}</span><span class="profile-chip-role">${profile.role || 'Consultant'}</span></span>`}
           ${!collapsed && html`<${Icon} name="chevron-up" size=${16} class="muted" />`}
         </button>`}
         items=${[
-          { label: 'Profile & PIN', icon: 'user-round', run: () => nav('settings', { settingsTab: 'profile' }) },
+          { label: 'Profile, photo & PIN', icon: 'user-round', run: () => nav('settings', { settingsTab: 'profile' }) },
           { label: 'Appearance', icon: 'palette', run: () => nav('settings', { settingsTab: 'appearance' }) },
           '-',
-          { label: profile.hasPin ? 'Lock' : 'Switch profile', icon: profile.hasPin ? 'lock' : 'log-out', run: signOut },
+          profile.hasPin && { label: 'Lock', icon: 'lock', run: lock },
+          { label: 'Switch profile', icon: 'log-out', run: signOut },
         ]} />
       <${IconButton} icon="panel-left" label=${collapsed ? 'Expand sidebar' : 'Collapse sidebar'} class="collapse-btn"
         onClick=${() => setSettings({ sidebarCollapsed: !collapsed })} />

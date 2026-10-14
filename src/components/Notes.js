@@ -5,7 +5,7 @@ import { useSession, useUi, setUi, setSettings, setEntered, openLog, openEdit, c
 import { bridge } from '../lib/bridge.js';
 import { dateKey, todayKey, parseKey, addDaysKey, weekDays, fmtDateFull, fmtHours, roundHours, fmtDuration } from '../lib/time.js';
 import { entriesOnDay, entryMinutes, renderLine, entriesToCsv } from '../lib/notes.js';
-import { Avatar, Button, CopyButton, EmptyState, Icon, IconButton, Menu, Progress, Segmented, Switch, TypeBadge, cx } from './ui.js';
+import { Button, ClientAvatar, CopyButton, EmptyState, Icon, IconButton, Menu, Progress, Segmented, Switch, TypeBadge, cx } from './ui.js';
 
 export function NotesView() {
   const { data } = useSession();
@@ -125,7 +125,7 @@ export function NotesView() {
               <header class="ng-head">
                 ${s.notesGroup === 'time'
                   ? html`<div class="ng-icon"><${Icon} name="list" size=${18} /></div>`
-                  : g.client ? html`<${Avatar} name=${g.client.name} color=${g.client.color} size=${38} square /> ` : html`<div class="ng-icon"><${Icon} name="briefcase" size=${18} /></div>`}
+                  : g.client ? html`<${ClientAvatar} client=${g.client} size=${40} />` : html`<div class="ng-icon"><${Icon} name="briefcase" size=${18} /></div>`}
                 <div class="ng-titles">
                   <span class="ng-name">${s.notesGroup === 'time' ? 'All entries' : g.client?.name || 'Internal / no client'}</span>
                   ${s.notesGroup !== 'time' && html`<button type="button" class="ng-project" onClick=${() => copyText(g.client?.kantataProject || g.client?.name || 'Internal', 'Project name copied')} data-tip="Copy project name">
@@ -135,6 +135,8 @@ export function NotesView() {
                 <button type="button" class="hours-pill" onClick=${() => copyText(fmtHours(hours), `${fmtHours(hours)} hours copied`)} data-tip="Copy hours">
                   <span><b>${fmtHours(hours)}</b>h</span><${Icon} name="copy" size=${12} />
                 </button>
+                ${g.client?.engagementUrl && html`<a class="btn btn-secondary btn-sm" href=${g.client.engagementUrl} target="_blank" rel="noreferrer" data-tip="Open this client's engagement page">
+                  <${Icon} name="external-link" size=${15} /><span>Open engagement</span></a>`}
                 <${CopyButton} text=${() => g.rows.map((r) => r.line).join('\n')} label="Copy all" onCopy=${(t) => onCopyGroup(g, t)} />
                 <${IconButton} icon=${done ? 'rotate-ccw' : 'list-checks'} label=${done ? 'Mark all not entered' : 'Mark all entered'} onClick=${() => setEntered(g.rows.map((r) => r.e.id), !done)} />
               </header>

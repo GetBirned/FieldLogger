@@ -27,9 +27,35 @@ const firstClient = `__fl.setUi({ page: 'clients', clientId: __fl.session.get().
 const startTimer = `(() => { const d = __fl.session.get().data; __fl.startTimer({ typeId: 'call', clientId: d.clients[1].id, notes: '' });
   __fl.updateData((x) => ({ ...x, timer: { ...x.timer, start: new Date(Date.now() - 23 * 60000 - 14000).toISOString() } })); })()`;
 
+// A generated headshot-style photo, and a white-on-transparent logo pushed
+// through the real processLogo() (it should pick the dark plate).
+const fakePhoto = `(async () => {
+  const c = Object.assign(document.createElement('canvas'), { width: 400, height: 300 });
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 400, 300); g.addColorStop(0, '#fbbf24'); g.addColorStop(1, '#f97316');
+  x.fillStyle = g; x.fillRect(0, 0, 400, 300);
+  x.fillStyle = '#7c2d12'; x.beginPath(); x.arc(200, 120, 55, 0, 7); x.fill();
+  x.beginPath(); x.ellipse(200, 290, 110, 90, 0, 0, 7); x.fill();
+  const file = new File([await new Promise((r) => c.toBlob(r))], 'me.png', { type: 'image/png' });
+  await __fl.updateProfile({ photo: await __fl.image.processPhoto(file) });
+})()`;
+const whiteLogo = `(async () => {
+  const c = Object.assign(document.createElement('canvas'), { width: 500, height: 300 });
+  const x = c.getContext('2d');
+  x.fillStyle = '#ffffff'; x.beginPath(); x.moveTo(120, 230); x.lineTo(250, 70); x.lineTo(380, 230); x.closePath(); x.fill();
+  x.fillRect(120, 245, 260, 14);
+  const file = new File([await new Promise((r) => c.toBlob(r))], 'summit.png', { type: 'image/png' });
+  const out = await __fl.image.processLogo(file);
+  const d = __fl.session.get().data;
+  __fl.updateClient(d.clients.find((k) => k.name.startsWith('Summit')).id, out);
+  return out.logoBg;
+})()`;
+const clickEdit = `[...document.querySelectorAll('.hero-actions button')].find((b) => b.textContent.trim() === 'Edit').click()`;
+const escape = `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`;
+
 const shots = [
   { name: 'gate', before: null },
-  { name: 'day-light', js: [setup, theme('light'), ui({ page: 'calendar', calView: 'day' })] },
+  { name: 'day-light', js: [setup, fakePhoto, whiteLogo, theme('light'), ui({ page: 'calendar', calView: 'day' })] },
   { name: 'week-light', js: [ui({ calView: 'week' })] },
   { name: 'month-light', js: [ui({ calView: 'month' })] },
   { name: 'log-light', js: [ui({ calView: 'day' }), `__fl.openLog({ typeId: 'call' })`] },
@@ -37,6 +63,8 @@ const shots = [
     `(() => { const t = document.querySelector('.log-form textarea'); t.value = 'Walked Jamie through the cost code import'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`] },
   { name: 'clients-light', js: [`__fl.closeLog()`, ui({ page: 'clients', clientId: null })] },
   { name: 'client-detail-light', js: [firstClient] },
+  { name: 'client-form-light', js: [clickEdit] },
+  { name: 'settings-profile-light', js: [escape, ui({ page: 'settings', settingsTab: 'profile' })] },
   { name: 'notes-light', js: [ui({ page: 'notes', clientId: null })] },
   { name: 'settings-light', js: [ui({ page: 'settings', settingsTab: 'appearance' })] },
   { name: 'day-dark', js: [theme('dark'), startTimer, ui({ page: 'calendar', calView: 'day' })] },
@@ -48,6 +76,7 @@ const shots = [
   { name: 'settings-types-dark', js: [ui({ page: 'settings', settingsTab: 'types' })] },
   { name: 'settings-notes-dark', js: [ui({ page: 'settings', settingsTab: 'notes' })] },
   { name: 'accent-teal-dark', js: [`__fl.setSettings({ accent: '#14b8a6' })`, ui({ page: 'calendar', calView: 'day' })] },
+  { name: 'gate-pin-dark', js: [`__fl.setProfilePin('2468')`, `__fl.lock()`] },
 ];
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -64,7 +93,10 @@ app.whenReady().then(async () => {
   await wait(900);
   for (const shot of shots) {
     for (const js of shot.js || []) {
-      try { await win.webContents.executeJavaScript(js); } catch (err) { console.log(`[${shot.name}] script error: ${err.message}`); }
+      try {
+        const result = await win.webContents.executeJavaScript(js);
+        if (typeof result === 'string') console.log(`[${shot.name}] -> ${result}`);
+      } catch (err) { console.log(`[${shot.name}] script error: ${err.message}`); }
       await wait(150);
     }
     await wait(700);

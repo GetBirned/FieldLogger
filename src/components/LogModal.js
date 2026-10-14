@@ -6,7 +6,7 @@ import {
 import { PALETTE } from '../lib/defaults.js';
 import { dateKey, todayKey, toTimeInput, combine, minutesToInput, fmtDuration, fmtDateLong } from '../lib/time.js';
 import { renderLine } from '../lib/notes.js';
-import { Avatar, Button, CopyButton, Field, Icon, Kbd, Modal, Segmented, Switch, TypeBadge, cx } from './ui.js';
+import { Button, ClientAvatar, CopyButton, Field, Icon, Kbd, Modal, Segmented, Switch, TypeBadge, cx } from './ui.js';
 
 const DURATIONS = [
   { value: 0, label: 'None' },
@@ -224,8 +224,8 @@ export function LogModal({ state }) {
           <span>Client</span>
           ${recentClients.length > 0 && html`<div class="recent-chips">
             <span class="faint">Recent</span>
-            ${recentClients.map((c) => html`<button type="button" class=${cx('chip chip-client', c.id === clientId && 'is-active')} style=${{ '--cc': c.color }} onClick=${() => setClientId(c.id)} data-tip=${c.name}>
-              <span class="chip-dot"></span><span class="chip-text">${c.name}</span>
+            ${recentClients.map((c) => html`<button type="button" class=${cx('chip chip-client', c.id === clientId && 'is-active', c.logo && 'has-logo')} style=${{ '--cc': c.color }} onClick=${() => setClientId(c.id)} data-tip=${c.name}>
+              ${c.logo ? html`<${ClientAvatar} client=${c} size=${18} />` : html`<span class="chip-dot"></span>`}<span class="chip-text">${c.name}</span>
             </button>`)}
           </div>`}
         </div>
@@ -355,7 +355,7 @@ export function ClientPicker({ value, onChange, clients, entries }) {
   return html`<div class="picker" ref=${wrap}>
     <button type="button" class=${cx('input picker-trigger', open && 'is-open')} onClick=${() => setOpen(!open)}>
       ${selected
-        ? html`<${Avatar} name=${selected.name} color=${selected.color} size=${24} square /><span class="picker-value">${selected.name}</span>
+        ? html`<${ClientAvatar} client=${selected} size=${28} /><span class="picker-value">${selected.name}</span>
           ${selected.kantataProject && html`<span class="picker-sub">${selected.kantataProject}</span>`}`
         : value === null
           ? html`<span class="picker-icon"><${Icon} name="briefcase" size=${15} /></span><span class="picker-value">Internal / no client</span>`
@@ -375,7 +375,7 @@ export function ClientPicker({ value, onChange, clients, entries }) {
             ? html`<span class="picker-plus"><${Icon} name="plus" size=${15} /></span><span>Add <b>“${o.name}”</b> as a new client</span>`
             : o.internal
               ? html`<span class="picker-icon"><${Icon} name="briefcase" size=${15} /></span><span>Internal / no client</span>`
-              : html`<${Avatar} name=${o.name} color=${o.color} size=${24} square />
+              : html`<${ClientAvatar} client=${o} size=${26} />
                 <span class="picker-opt-name">${o.name}</span>
                 ${!o.active && html`<span class="badge badge-muted">Inactive</span>`}
                 ${o.kantataProject && html`<span class="picker-sub">${o.kantataProject}</span>`}`}

@@ -4,27 +4,40 @@ import { bridge } from '../lib/bridge.js';
 import { signIn, loadDemo } from '../lib/store.js';
 import { APP_TAGLINE, PALETTE } from '../lib/defaults.js';
 import { relativeTime } from '../lib/time.js';
+import { processPhoto } from '../lib/image.js';
 import { LogoMark, Wordmark } from './Logo.js';
-import { Avatar, Button, ColorPicker, Field, Icon, Switch, cx } from './ui.js';
+import { Avatar, Button, ColorPicker, Field, Icon, ImageDrop, Switch, cx, usePasteImage } from './ui.js';
 
-export function ProfileGate({ initialProfiles }) {
-  const [profiles, setProfiles] = useState(initialProfiles || []);
-  const [mode, setMode] = useState(initialProfiles?.length ? 'pick' : 'create');
+// Opens on the right step: your PIN if you locked or closed with a PIN,
+// the picker if you switched profiles, or "create" on a brand new install.
+export function ProfileGate() {
+  const [profiles, setProfiles] = useState([]);
+  const [mode, setMode] = useState('loading');
   const [selected, setSelected] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    bridge.profiles.list().then(({ profiles: list }) => {
+    bridge.profiles.list().then(({ lastProfileId, profiles: list }) => {
       setProfiles(list);
+      const last = list.find((p) => p.id === lastProfileId);
       if (!list.length) setMode('create');
+      else if (last?.hasPin) {
+        setSelected(last);
+        setMode('pin');
+      } else setMode('pick');
+    }).catch((err) => {
+      setError(err.message || String(err));
+      setMode('pick');
     });
   }, []);
 
   const choose = (p) => {
+    setError('');
     if (p.hasPin) {
       setSelected(p);
       setMode('pin');
     } else {
-      signIn(p);
+      signIn(p).catch((err) => setError(err.message || String(err)));
     }
   };
 
@@ -39,9 +52,10 @@ export function ProfileGate({ initialProfiles }) {
 
       ${mode === 'pick' && html`<div class="gate-card">
         <h2 class="gate-title">Who's logging today?</h2>
+        ${error && html`<div class="form-error gate-error"><${Icon} name="triangle-alert" size=${15} /> ${error}</div>`}
         <div class="profile-grid">
           ${profiles.map((p) => html`<button type="button" class="profile-card" onClick=${() => choose(p)}>
-            <${Avatar} name=${p.name} color=${p.color} size=${56} />
+            <${Avatar} name=${p.name} color=${p.color} src=${p.photo} size=${56} />
             <span class="profile-name">${p.name}</span>
             <span class="profile-role">${p.role || 'Consultant'}</span>
             <span class="profile-meta">${p.hasPin && html`<${Icon} name="lock" size=${12} />`} ${p.lastOpenedAt ? `Last in ${relativeTime(p.lastOpenedAt)}` : 'New'}</span>
@@ -56,8 +70,6 @@ export function ProfileGate({ initialProfiles }) {
 
       ${mode === 'create' && html`<${CreateProfile} canCancel=${profiles.length > 0} onCancel=${() => setMode('pick')} />`}
       ${mode === 'pin' && selected && html`<${PinUnlock} profile=${selected} onBack=${() => { setMode('pick'); setSelected(null); }} />`}
-
-      <p class="gate-foot"><${Icon} name="shield-check" size=${14} /> Everything stays on this computer. No accounts, no cloud.</p>
     </div>
   </div>`;
 }
@@ -70,8 +82,20 @@ function CreateProfile({ canCancel, onCancel }) {
   const [pin, setPin] = useState('');
   const [pin2, setPin2] = useState('');
   const [demo, setDemo] = useState(false);
+  const [photo, setPhoto] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const pickPhoto = async (file) => {
+    try {
+      setPhoto(await processPhoto(file));
+      setError('');
+    } catch (err) {
+      setError(err.message || String(err));
+    }
+  };
+
+  usePasteImage(pickPhoto);
 
   const submit = async (e) => {
     e?.preventDefault();
@@ -80,7 +104,7 @@ function CreateProfile({ canCancel, onCancel }) {
     if (usePin && pin !== pin2) return setError("PINs don't match.");
     setBusy(true);
     try {
-      const profile = await bridge.profiles.create({ name: name.trim(), role: role.trim(), color, pin: usePin ? pin : null });
+      const profile = await bridge.profiles.create({ name: name.trim(), role: role.trim(), color, photo, pin: usePin ? pin : null });
       await signIn(profile);
       if (demo) loadDemo();
     } catch (err) {
@@ -91,10 +115,15 @@ function CreateProfile({ canCancel, onCancel }) {
 
   return html`<form class="gate-card gate-form" onSubmit=${submit}>
     <div class="gate-form-head">
-      <${Avatar} name=${name || '?'} color=${color} size=${52} />
-      <div>
+      <${ImageDrop} round onFile=${pickPhoto} tip="Add a profile picture (click, drop or paste)">
+        <${Avatar} name=${name || '?'} color=${color} src=${photo} size=${60} />
+      <//>
+      <div class="grow">
         <h2 class="gate-title">Create your profile</h2>
-        <p class="muted">A local profile keeps your clients, logs and theme separate.</p>
+        <p class="muted">A local profile keeps your clients, logs and theme separate.
+          ${photo
+            ? html` <button type="button" class="link" onClick=${() => setPhoto(null)}>Remove photo</button>`
+            : html` Click the circle to add a photo.`}</p>
       </div>
     </div>
     <div class="form-grid">
@@ -129,7 +158,7 @@ function PinUnlock({ profile, onBack }) {
   const submit = async (e) => {
     e?.preventDefault();
     if (await bridge.profiles.verifyPin(profile.id, pin)) {
-      signIn(profile);
+      signIn(profile).catch((err) => setError(err.message || String(err)));
     } else {
       setError(true);
       setShake(true);
@@ -139,8 +168,8 @@ function PinUnlock({ profile, onBack }) {
     }
   };
 
-  return html`<form class=${cx('gate-card gate-pin', shake && 'shake')} onSubmit=${submit}>
-    <${Avatar} name=${profile.name} color=${profile.color} size=${64} />
+  return html`<form class=${cx('gate-card gate-pin', shake && 'shake')} onSubmit=${submit} onClick=${() => ref.current?.focus()}>
+    <${Avatar} name=${profile.name} color=${profile.color} src=${profile.photo} size=${72} />
     <h2 class="gate-title">Welcome back, ${profile.name.split(' ')[0]}</h2>
     <p class="muted">Enter your PIN to unlock.</p>
     <div class="pin-dots" aria-hidden="true">
@@ -148,7 +177,7 @@ function PinUnlock({ profile, onBack }) {
     </div>
     <input ref=${ref} class="pin-hidden" type="password" inputmode="numeric" maxlength="8" autofocus value=${pin}
       onInput=${(e) => { setPin(e.currentTarget.value.replace(/\D/g, '')); setError(false); }} aria-label="PIN" />
-    ${error && html`<div class="form-error">Incorrect PIN. Try again.</div>`}
+    ${error && html`<div class="form-error">${typeof error === 'string' ? error : 'Incorrect PIN. Try again.'}</div>`}
     <div class="gate-actions">
       <${Button} variant="ghost" icon="arrow-left" onClick=${onBack}>Switch profile</${Button}>
       <button type="submit" class="btn btn-primary" disabled=${pin.length < 4}><${Icon} name="lock-open" size=${16} /><span>Unlock</span></button>

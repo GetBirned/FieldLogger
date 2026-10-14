@@ -36,6 +36,7 @@ chart-column house layout-dashboard list-checks shield-check refresh-cw send fil
 hammer construction monitor-play circle-help sticky-note external-link circle minus contrast droplet type gauge
 globe repeat arrow-up-right clipboard-paste square-check square-dashed circle-pause mouse-pointer-click
 calendar-plus list-todo inbox wand-sparkles party-popper badge-check map ruler drafting-compass shovel
+camera image image-plus user-lock
 `.trim().split(/\s+/);
 
 const icons = {};

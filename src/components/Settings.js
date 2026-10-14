@@ -2,13 +2,14 @@
 import { html, useEffect, useMemo, useState } from '../lib/h.js';
 import {
   useSession, useUi, setUi, setSettings, saveActionType, deleteActionType, moveActionType, restoreDefaultActionTypes,
-  updateProfile, setProfilePin, signOut, replaceData, loadDemo, removeDemo, confirmDialog, toast, flush,
+  updateProfile, setProfilePin, signOut, lock, replaceData, loadDemo, removeDemo, confirmDialog, toast, flush,
 } from '../lib/store.js';
+import { processPhoto } from '../lib/image.js';
 import { bridge, isElectron } from '../lib/bridge.js';
 import { ACCENTS, ACTION_ICONS, NOTE_TOKENS, DEFAULT_TEMPLATE, PALETTE, APP_NAME, uid } from '../lib/defaults.js';
 import { renderLine } from '../lib/notes.js';
 import { fmtHourLabel } from '../lib/time.js';
-import { Avatar, Button, ColorPicker, Field, Icon, IconButton, Kbd, Modal, Segmented, Switch, TypeBadge, cx } from './ui.js';
+import { Avatar, Button, ColorPicker, Field, Icon, IconButton, ImageDrop, Kbd, Modal, Segmented, Switch, TypeBadge, cx, usePasteImage } from './ui.js';
 import { LogoMark, Wordmark } from './Logo.js';
 
 const TABS = [
@@ -303,10 +304,27 @@ function ProfileSettings({ profile }) {
     await setProfilePin(null);
     toast('PIN removed', { icon: 'lock-open' });
   };
+  const pickPhoto = async (file) => {
+    try {
+      await updateProfile({ photo: await processPhoto(file) });
+      toast('Profile picture updated', { icon: 'camera' });
+    } catch (err) {
+      toast(err.message || String(err), { tone: 'error' });
+    }
+  };
+  usePasteImage(pickPhoto);
+
   return html`
     <${Section} title="Your profile" desc="Profiles are local to this computer. No email or password needed.">
       <div class="profile-edit">
-        <${Avatar} name=${name || '?'} color=${profile.color} size=${64} />
+        <div class="photo-col">
+          <${ImageDrop} round onFile=${pickPhoto} tip="Change profile picture (click, drop or paste)">
+            <${Avatar} name=${name || '?'} color=${profile.color} src=${profile.photo} size=${80} />
+          <//>
+          ${profile.photo
+            ? html`<button type="button" class="link small" onClick=${() => updateProfile({ photo: null })}>Remove photo</button>`
+            : html`<span class="photo-hint">Add a photo</span>`}
+        </div>
         <div class="form-grid grow">
           <${Field} label="Name"><input class="input" value=${name} onInput=${(e) => setName(e.currentTarget.value)} onBlur=${save} maxlength="60" /><//>
           <${Field} label="Role"><input class="input" value=${role} onInput=${(e) => setRole(e.currentTarget.value)} onBlur=${save} placeholder="Implementation Consultant" maxlength="80" /><//>
@@ -321,9 +339,15 @@ function ProfileSettings({ profile }) {
         <${Button} icon=${profile.hasPin ? 'refresh-cw' : 'lock'} onClick=${() => setPinOpen(true)}>${profile.hasPin ? 'Change PIN' : 'Set a PIN'}<//>
         ${profile.hasPin && html`<${Button} variant="ghost" onClick=${removePin}>Remove<//>`}
       </div>
+      ${profile.hasPin && html`<${Switch} checked=${profile.pinOnLaunch} onChange=${(v) => updateProfile({ pinOnLaunch: v })}
+        label="Ask for PIN when FieldLogger opens"
+        hint=${profile.pinOnLaunch ? 'Closing the app locks it. You will enter your PIN next time.' : 'You stay signed in between launches. Use Lock to require the PIN.'} />`}
     <//>
-    <${Section} title="Switch profile" desc="Sign out to pick or create another profile on this computer.">
-      <${Button} icon="log-out" onClick=${signOut}>${profile.hasPin ? 'Lock & switch profile' : 'Switch profile'}<//>
+    <${Section} title="Lock or switch profile" desc="FieldLogger keeps you signed in when you close it. Lock or switch here.">
+      <div class="row-gap">
+        ${profile.hasPin && html`<${Button} icon="lock" onClick=${lock}>Lock now<//>`}
+        <${Button} icon="log-out" onClick=${signOut}>Switch profile<//>
+      </div>
     <//>
     ${pinOpen && html`<${PinDialog} onClose=${() => setPinOpen(false)} />`}
   `;

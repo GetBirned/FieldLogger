@@ -33,6 +33,10 @@ Everything stays on your computer. There's no server, no cloud and no sign-up.
 | Copy notes into Kantata | **Kantata Notes**: copy one line, a whole project, or the whole day |
 | Track what's been entered | Tick the checkbox per line, or leave **Check off on copy** on |
 | Clients, POCs, notes | **Clients**: add contacts (star one as POC), set the phase, write notes, mark active/inactive |
+| Client logos | Click (or drop an image on) the client's tile, or paste one with Ctrl+V in Edit client. The logo then shows in Log Action, on the calendar and in Kantata Notes |
+| Engagement link | Paste the client's Kantata / Salesforce DX engagement URL in **Edit client** to get an **Open engagement** button on the client page and in Kantata Notes |
+| Profile picture | **Settings → Profile & PIN**: click, drop or paste a photo |
+| Staying signed in | FieldLogger reopens straight into your profile. With a PIN, it asks for the PIN on launch (turn that off in Settings). **Lock** keeps your profile selected; **Switch profile** returns to the picker |
 | Make it yours | **Settings → Appearance** for light/dark/system mode, 12 accent colors or a custom one, the aurora glow and density |
 | Change the note format | **Settings → Kantata notes**. Tokens: `{time} {event} {notes} {client} {project} {duration} {hours} {date}` |
 

@@ -86,10 +86,23 @@ function dailyBackup(id) {
 
 // -------------------------------------------------------------------- profiles
 
+// A briefly locked or half-written file must never read as "no profiles",
+// or the next write would drop everyone's profile. Retry, then fail loudly.
 function loadProfiles() {
-  const raw = readJson(PROFILES_FILE, null);
-  if (!raw || !Array.isArray(raw.profiles)) return { version: 1, lastProfileId: null, profiles: [] };
-  return raw;
+  if (!fs.existsSync(PROFILES_FILE)) return { version: 1, lastProfileId: null, profiles: [] };
+  let lastErr;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8'));
+      if (raw && Array.isArray(raw.profiles)) return raw;
+      lastErr = new Error('profiles.json has an unexpected shape');
+    } catch (err) {
+      lastErr = err;
+    }
+    const until = Date.now() + 60;
+    while (Date.now() < until) { /* brief spin before retrying */ }
+  }
+  throw new Error(`Couldn't read the profile list (${lastErr?.message}). Nothing was changed.`);
 }
 const saveProfiles = (store) => writeJsonAtomic(PROFILES_FILE, store);
 
@@ -98,10 +111,17 @@ const publicProfile = (p) => ({
   name: p.name,
   role: p.role || '',
   color: p.color,
+  photo: p.photo || null,
   createdAt: p.createdAt,
   lastOpenedAt: p.lastOpenedAt || null,
   hasPin: Boolean(p.pin),
+  pinOnLaunch: p.pinOnLaunch !== false,
 });
+
+// Profile photos arrive as small, already-resized data URLs from the renderer.
+const validPhoto = (photo) => typeof photo === 'string'
+  && photo.length <= 800000
+  && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(photo);
 
 function hashPin(pin, salt = crypto.randomBytes(16).toString('hex')) {
   return { salt, hash: crypto.scryptSync(String(pin), salt, 32).toString('hex') };
@@ -128,9 +148,11 @@ ipcMain.handle('profiles:create', (_e, input) => {
     name,
     role: String(input?.role || '').trim().slice(0, 80),
     color: String(input?.color || '#f97316'),
+    photo: validPhoto(input?.photo) ? input.photo : null,
     createdAt: new Date().toISOString(),
     lastOpenedAt: null,
     pin: validPin(input?.pin) ? hashPin(input.pin) : null,
+    pinOnLaunch: true,
   };
   store.profiles.push(profile);
   saveProfiles(store);
@@ -144,6 +166,12 @@ ipcMain.handle('profiles:update', (_e, id, patch) => {
   if (typeof patch?.name === 'string' && patch.name.trim()) p.name = patch.name.trim().slice(0, 60);
   if (typeof patch?.role === 'string') p.role = patch.role.trim().slice(0, 80);
   if (typeof patch?.color === 'string') p.color = patch.color;
+  if (patch && 'photo' in patch) {
+    if (patch.photo === null) p.photo = null;
+    else if (validPhoto(patch.photo)) p.photo = patch.photo;
+    else throw new Error('That photo could not be saved.');
+  }
+  if (typeof patch?.pinOnLaunch === 'boolean') p.pinOnLaunch = patch.pinOnLaunch;
   saveProfiles(store);
   return publicProfile(p);
 });
@@ -403,6 +431,14 @@ function runSelfTest(win) {
       await api.profiles.touch(p.id);
       const list = await api.profiles.list();
       out.listed = list.lastProfileId === p.id && list.profiles.length === 1 && !('pin' in list.profiles[0]);
+      const photo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+      const q = await api.profiles.create({ name: 'Second', color: '#f97316', photo });
+      out.secondKeepsFirst = (await api.profiles.list()).profiles.map((x) => x.id).join() === [p.id, q.id].join();
+      out.photoOnCreate = q.photo === photo;
+      out.photoCleared = (await api.profiles.update(q.id, { photo: null })).photo === null;
+      out.badPhotoRejected = await api.profiles.update(q.id, { photo: 'javascript:alert(1)' }).then(() => false, () => true);
+      out.pinOnLaunchToggle = (await api.profiles.update(p.id, { pinOnLaunch: false })).pinOnLaunch === false;
+      await api.profiles.remove(q.id);
       await api.profiles.remove(p.id);
       out.removed = (await api.profiles.list()).profiles.length === 0;
       return out;

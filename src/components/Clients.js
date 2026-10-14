@@ -6,7 +6,10 @@ import {
 import { PALETTE, PHASES } from '../lib/defaults.js';
 import { dateKey, todayKey, parseKey, addDays, startOfWeek, fmtHours, fmtDateLong, fmtDateShort, relativeTime } from '../lib/time.js';
 import { entryMinutes, entryTimeText, renderLine, totalMinutes } from '../lib/notes.js';
-import { Avatar, Button, ColorPicker, CopyButton, EmptyState, Field, Icon, IconButton, Menu, Modal, Segmented, Switch, TypeBadge, cx } from './ui.js';
+import { processLogo, chooseImage } from '../lib/image.js';
+import {
+  Avatar, Button, ClientAvatar, ColorPicker, CopyButton, EmptyState, Field, Icon, IconButton, ImageDrop, Menu, Modal, Segmented, Switch, TypeBadge, cx, usePasteImage,
+} from './ui.js';
 
 export function ClientsView() {
   const u = useUi();
@@ -107,7 +110,7 @@ function ClientCard({ client: c, stats, index }) {
   return html`<button type="button" class=${cx('client-card', !c.active && 'is-inactive')} style=${{ '--cc': c.color, animationDelay: `${Math.min(index, 12) * 25}ms` }}
       onClick=${() => setUi({ clientId: c.id })}>
     <div class="cc-top">
-      <${Avatar} name=${c.name} color=${c.color} size=${44} square />
+      <${ClientAvatar} client=${c} size=${44} />
       <div class="cc-titles">
         <span class="cc-name">${c.name}</span>
         <span class="cc-project">${c.kantataProject || 'No Kantata project set'}</span>
@@ -171,6 +174,15 @@ function ClientDetail({ client: c, data }) {
     toast(`Deleted ${c.name}`, { tone: 'info', icon: 'trash-2' });
   };
 
+  const changeLogo = async (file) => {
+    try {
+      updateClient(c.id, await processLogo(file));
+      toast(`Logo updated for ${c.name}`, { icon: 'image' });
+    } catch (err) {
+      toast(err.message || String(err), { tone: 'error' });
+    }
+  };
+
   const toggleActive = () => {
     updateClient(c.id, { active: !c.active });
     toast(c.active ? `${c.name} marked inactive` : `${c.name} is active again`, { icon: c.active ? 'archive' : 'archive-restore' });
@@ -181,7 +193,9 @@ function ClientDetail({ client: c, data }) {
       <div class="hero-glow"></div>
       <button type="button" class="back-link" onClick=${() => setUi({ clientId: null })}><${Icon} name="arrow-left" size=${15} /> All clients</button>
       <div class="hero-row">
-        <${Avatar} name=${c.name} color=${c.color} size=${64} square />
+        <${ImageDrop} onFile=${changeLogo} tip=${c.logo ? 'Change logo (click or drop an image)' : 'Add a logo (click or drop an image)'}>
+          <${ClientAvatar} client=${c} size=${72} />
+        <//>
         <div class="hero-titles">
           <div class="hero-name-row">
             <h2>${c.name}</h2>
@@ -196,11 +210,17 @@ function ClientDetail({ client: c, data }) {
           </div>
         </div>
         <div class="hero-actions">
+          ${c.engagementUrl
+            ? html`<a class="btn btn-secondary" href=${c.engagementUrl} target="_blank" rel="noreferrer" data-tip=${c.engagementUrl}>
+                <${Icon} name="external-link" size=${16} /><span>Open engagement</span></a>`
+            : html`<${Button} variant="ghost" icon="link" onClick=${() => setEditing(true)} data-tip="Paste the Kantata / Salesforce DX engagement page">Add engagement link<//>`}
           <${Button} variant="primary" icon="plus" onClick=${() => openLog({ clientId: c.id })}>Log action<//>
           <${Button} icon="pencil" onClick=${() => setEditing(true)}>Edit<//>
           <${Menu} trigger=${({ toggle }) => html`<${IconButton} icon="ellipsis" label="More" onClick=${toggle} />`} items=${[
             { label: c.active ? 'Mark inactive' : 'Mark active', icon: c.active ? 'archive' : 'archive-restore', run: toggleActive },
             { label: 'Copy Kantata project name', icon: 'copy', run: () => copyText(c.kantataProject || c.name) },
+            c.engagementUrl && { label: 'Copy engagement link', icon: 'link', run: () => copyText(c.engagementUrl, 'Engagement link copied') },
+            c.logo && { label: 'Remove logo', icon: 'image', run: () => updateClient(c.id, { logo: null }) },
             '-',
             { label: 'Delete client', icon: 'trash-2', danger: true, run: remove },
           ]} />
@@ -318,6 +338,19 @@ function ClientNotes({ client }) {
   </div>`;
 }
 
+// '' stays empty, bare domains get https://, anything that isn't a web link is null.
+function normalizeUrl(value) {
+  const v = String(value || '').trim();
+  if (!v) return '';
+  const withScheme = /^https?:\/\//i.test(v) ? v : `https://${v}`;
+  try {
+    const u = new URL(withScheme);
+    return /^https?:$/.test(u.protocol) && u.hostname.includes('.') ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 export function ClientForm({ client, onClose, count = 0 }) {
   const [f, setF] = useState(() => ({
     name: client?.name || '',
@@ -329,13 +362,31 @@ export function ClientForm({ client, onClose, count = 0 }) {
     goLiveDate: client?.goLiveDate || '',
     location: client?.location || '',
     website: client?.website || '',
+    engagementUrl: client?.engagementUrl || '',
+    logo: client?.logo || null,
+    logoBg: client?.logoBg || 'light',
   }));
   const [error, setError] = useState('');
-  const set = (k) => (e) => setF({ ...f, [k]: e?.currentTarget ? e.currentTarget.value : e });
+  const [urlError, setUrlError] = useState('');
+  const [logoError, setLogoError] = useState('');
+  const set = (k) => (e) => setF((prev) => ({ ...prev, [k]: e?.currentTarget ? e.currentTarget.value : e }));
+
+  const pickLogo = async (file) => {
+    try {
+      const { logo, logoBg } = await processLogo(file);
+      setF((prev) => ({ ...prev, logo, logoBg }));
+      setLogoError('');
+    } catch (err) {
+      setLogoError(err.message || String(err));
+    }
+  };
+  usePasteImage(pickLogo);
 
   const save = () => {
     if (!f.name.trim()) return setError('Give the client a name.');
-    const fields = { ...f, name: f.name.trim(), kantataProject: f.kantataProject.trim(), website: f.website.trim() && !/^https?:\/\//i.test(f.website.trim()) ? `https://${f.website.trim()}` : f.website.trim() };
+    const engagementUrl = normalizeUrl(f.engagementUrl);
+    if (engagementUrl === null) return setUrlError('That doesn’t look like a web link. Paste the full address from your browser.');
+    const fields = { ...f, name: f.name.trim(), kantataProject: f.kantataProject.trim(), website: normalizeUrl(f.website) || '', engagementUrl };
     if (client) {
       updateClient(client.id, fields);
       toast('Client saved', { icon: 'circle-check' });
@@ -351,10 +402,31 @@ export function ClientForm({ client, onClose, count = 0 }) {
     footer=${html`<${Button} variant="ghost" onClick=${onClose}>Cancel<//><${Button} variant="primary" icon="check" onClick=${save}>${client ? 'Save client' : 'Add client'}<//>`}>
     <div class="form-stack" onKeyDown=${(e) => e.key === 'Enter' && e.ctrlKey && save()}>
       <div class="form-hero">
-        <${Avatar} name=${f.name || '?'} color=${f.color} size=${52} square />
+        <${ImageDrop} onFile=${pickLogo} tip="Upload a logo (click, drop or paste)">
+          <${ClientAvatar} client=${{ name: f.name || '?', color: f.color, logo: f.logo, logoBg: f.logoBg }} size=${60} />
+        <//>
         <${Field} label="Client name" error=${error} class="grow"><input class="input input-lg" value=${f.name} onInput=${(e) => { set('name')(e); setError(''); }} placeholder="e.g. Granite Ridge Paving" autofocus /><//>
       </div>
+      <div class="logo-row">
+        <div class="logo-row-text">
+          <span class="field-label">Logo</span>
+          ${logoError
+            ? html`<span class="field-error">${logoError}</span>`
+            : html`<span class="field-hint">PNG, JPG, SVG or WebP. Click the tile, drop a file on it, or paste one with Ctrl+V.</span>`}
+        </div>
+        ${f.logo && html`<${Segmented} size="sm" value=${f.logoBg} onChange=${(v) => setF((prev) => ({ ...prev, logoBg: v }))}
+          options=${[{ value: 'light', label: 'Light', tip: 'Light plate behind the logo' }, { value: 'dark', label: 'Dark', tip: 'Dark plate, for white logos' }]} />`}
+        <${Button} size="sm" icon="image-plus" onClick=${async () => { const file = await chooseImage(); if (file) pickLogo(file); }}>${f.logo ? 'Replace' : 'Upload logo'}<//>
+        ${f.logo && html`<${Button} size="sm" variant="ghost" onClick=${() => setF((prev) => ({ ...prev, logo: null }))}>Remove<//>`}
+      </div>
       <${Field} label="Kantata project" hint="Shows on Kantata Notes so you know exactly where to paste."><input class="input" value=${f.kantataProject} onInput=${set('kantataProject')} placeholder="e.g. GRP - B2W Estimate Implementation" /><//>
+      <${Field} label="Engagement page" error=${urlError}
+        hint="Paste the client's Kantata / Salesforce DX engagement URL. You'll get a one-click “Open engagement” button on the client page and Kantata Notes.">
+        <div class="input-icon">
+          <${Icon} name="link" size=${16} />
+          <input class="input" value=${f.engagementUrl} onInput=${(e) => { set('engagementUrl')(e); setUrlError(''); }} placeholder="https://yourcompany.lightning.force.com/…" spellcheck=${false} />
+        </div>
+      <//>
       <div class="form-grid">
         <${Field} label="Phase">
           <select class="input" value=${f.phase} onChange=${set('phase')}>${PHASES.map((p) => html`<option value=${p}>${p}</option>`)}</select>

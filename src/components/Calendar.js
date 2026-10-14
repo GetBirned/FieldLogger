@@ -7,7 +7,7 @@ import {
   fmtTime, fmtRange, fmtHourLabel, fmtDuration, fmtHours, fmtDateFull, fmtDateLong, fmtWeekRange, fmtMonthYear, fmtWeekday,
 } from '../lib/time.js';
 import { entryMinutes, totalMinutes } from '../lib/notes.js';
-import { Button, Icon, IconButton, Segmented, TypeBadge, cx } from './ui.js';
+import { Button, ClientAvatar, Icon, IconButton, Segmented, TypeBadge, cx } from './ui.js';
 
 const HOUR_H = { compact: 46, comfortable: 62, spacious: 82 };
 const INSTANT_PX = 26;
@@ -291,6 +291,8 @@ function EventBlock({ item, top, height, data, typeById, clientById, narrow }) {
     '--ev': color,
   };
   const tip = `${type?.name || 'Action'} · ${client?.name || 'Internal'} · ${timeText}${e.notes ? `\n${e.notes}` : ''}`;
+  const logo = client?.logo && html`<${ClientAvatar} client=${client} size=${16} class="ev-logo" />`;
+  const clientLabel = html`<span class="ev-client">${logo}<span class="ev-client-name">${client?.name || 'Internal'}</span></span>`;
 
   if (item.instant) {
     return html`<button type="button" class=${cx('ev ev-instant', e.entered && 'is-entered')} style=${style} title=${tip}
@@ -298,7 +300,7 @@ function EventBlock({ item, top, height, data, typeById, clientById, narrow }) {
       <span class="ev-dot"></span>
       <span class="ev-time">${narrow ? fmtTime(e.start, s.hour12).replace(/ (AM|PM)$/, (m) => m.trim()[0].toLowerCase()) : fmtTime(e.start, s.hour12)}</span>
       <span class="ev-title">${type?.name || 'Action'}</span>
-      ${!narrow && html`<span class="ev-client">${client?.name || 'Internal'}</span>`}
+      ${!narrow && clientLabel}
       ${!narrow && mins > 0 && html`<span class="ev-dur">${fmtDuration(mins)}</span>`}
       ${e.entered && html`<span class="ev-check" title="Entered in Kantata"><${Icon} name="check" size=${11} stroke=${3} /></span>`}
     </button>`;
@@ -310,12 +312,13 @@ function EventBlock({ item, top, height, data, typeById, clientById, narrow }) {
       onClick=${() => openEdit(e.id)} onPointerDown=${(ev) => ev.stopPropagation()}>
     <div class="ev-row">
       <${Icon} name=${type?.icon || 'circle-dot'} size=${13} class="ev-icon" />
+      ${narrow && compact && logo}
       <span class="ev-title">${type?.name || 'Action'}</span>
-      ${compact && !narrow && html`<span class="ev-client">${client?.name || 'Internal'}</span>`}
+      ${compact && !narrow && clientLabel}
       ${wide && html`<span class="ev-time ev-time-end">${timeText} · ${fmtDuration(mins)}</span>`}
       ${e.entered && html`<span class="ev-check" title="Entered in Kantata"><${Icon} name="check" size=${11} stroke=${3} /></span>`}
     </div>
-    ${!compact && html`<div class="ev-client">${client?.name || 'Internal'}</div>`}
+    ${!compact && clientLabel}
     ${!compact && !wide && height >= 56 && html`<div class="ev-time">${timeText}</div>`}
     ${!compact && height > 80 && e.notes && html`<div class="ev-notes">${e.notes}</div>`}
   </button>`;

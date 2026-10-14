@@ -2,6 +2,7 @@
 import { html, useEffect, useRef, useState } from '../lib/h.js';
 import { ICONS } from '../vendor/icons.js';
 import { PALETTE } from '../lib/defaults.js';
+import { chooseImage, imageFromTransfer } from '../lib/image.js';
 
 export const cx = (...parts) => parts.filter(Boolean).join(' ');
 
@@ -29,9 +30,63 @@ export function Kbd({ children }) {
   return html`<kbd class="kbd">${children}</kbd>`;
 }
 
-export function Avatar({ name = '?', color = '#64748b', size = 36, square, class: cls }) {
+// Round (or squircle) avatar: a photo when there is one, else initials.
+export function Avatar({ name = '?', color = '#64748b', size = 36, square, src, class: cls }) {
+  const box = { '--av': color, width: `${size}px`, height: `${size}px` };
+  if (src) {
+    return html`<div class=${cx('avatar avatar-photo', square && 'avatar-square', cls)} style=${box}><img src=${src} alt="" draggable="false" /></div>`;
+  }
   const initials = String(name).trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('') || '?';
-  return html`<div class=${cx('avatar', square && 'avatar-square', cls)} style=${{ '--av': color, width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.38)}px` }}>${initials}</div>`;
+  return html`<div class=${cx('avatar', square && 'avatar-square', cls)} style=${{ ...box, fontSize: `${Math.round(size * 0.38)}px` }}>${initials}</div>`;
+}
+
+// A client's logo on a light (or dark) plate, falling back to initials.
+export function ClientAvatar({ client, size = 36, class: cls }) {
+  if (client?.logo) {
+    return html`<div class=${cx('logo-plate', client.logoBg === 'dark' && 'is-dark', size <= 20 && 'is-tiny', cls)}
+        style=${{ width: `${size}px`, height: `${size}px` }}>
+      <img src=${client.logo} alt="" draggable="false" />
+    </div>`;
+  }
+  return html`<${Avatar} name=${client?.name || '?'} color=${client?.color || '#64748b'} size=${size} square class=${cls} />`;
+}
+
+// Ctrl+V with a copied picture calls onFile(File) while the caller is mounted.
+export function usePasteImage(onFile) {
+  const ref = useRef(onFile);
+  ref.current = onFile;
+  useEffect(() => {
+    const onPaste = (e) => {
+      const file = imageFromTransfer(e.clipboardData);
+      if (!file) return;
+      e.preventDefault();
+      ref.current(file);
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, []);
+}
+
+// Click or drop an image onto its children. Calls onFile(File).
+export function ImageDrop({ onFile, children, tip = 'Click or drop an image', round, busy, class: cls }) {
+  const [over, setOver] = useState(false);
+  const open = async () => {
+    const file = await chooseImage();
+    if (file) onFile(file);
+  };
+  const drop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setOver(false);
+    const file = imageFromTransfer(e.dataTransfer);
+    if (file) onFile(file);
+  };
+  return html`<div role="button" tabindex="0" class=${cx('image-drop', over && 'is-over', round && 'is-round', busy && 'is-busy', cls)} data-tip=${tip}
+      onClick=${open} onKeyDown=${(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open())}
+      onDragOver=${(e) => { e.preventDefault(); setOver(true); }} onDragLeave=${() => setOver(false)} onDrop=${drop}>
+    ${children}
+    <span class="image-drop-badge"><${Icon} name="camera" size=${13} /></span>
+  </div>`;
 }
 
 export function TypeBadge({ type, size = 30 }) {

@@ -92,14 +92,23 @@ const patchList = (list, id, patch) => list.map((x) => (x.id === id ? { ...x, ..
 // ---------------------------------------------------------------------- session
 
 export async function signIn(profile) {
+  // Register the visit first: if the profile isn't on file, write nothing.
+  const touched = await bridge.profiles.touch(profile.id);
+  if (!touched) throw new Error('That profile is no longer on this computer.');
   const raw = await bridge.data.load(profile.id);
-  const data = raw ? normalizeData(raw, profile) : freshData(profile);
+  const data = raw ? normalizeData(raw, touched) : freshData(touched);
   if (!raw) await bridge.data.save(profile.id, data);
-  const touched = (await bridge.profiles.touch(profile.id)) || profile;
   ui.set((s) => ({ ...s, page: 'calendar', calView: data.settings.defaultView || 'day', date: todayKey(), clientId: null, log: null, confirm: null }));
   session.set({ profile: touched, data });
 }
 
+// Lock keeps you as the last profile, so the launch screen asks for your PIN.
+export async function lock() {
+  await flush();
+  session.set({ profile: null, data: null });
+}
+
+// Switching forgets the last profile, so the launch screen shows the picker.
 export async function signOut() {
   await flush();
   await bridge.profiles.forget();
@@ -217,6 +226,9 @@ export function addClient(fields) {
     goLiveDate: '',
     website: '',
     location: '',
+    engagementUrl: '',
+    logo: null,
+    logoBg: 'light',
     notes: '',
     contacts: [],
     createdAt: now(),
