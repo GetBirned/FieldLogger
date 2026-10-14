@@ -226,6 +226,7 @@ export function addClient(fields) {
     goLiveDate: '',
     website: '',
     location: '',
+    erp: '',
     engagementUrl: '',
     logo: null,
     logoBg: 'light',

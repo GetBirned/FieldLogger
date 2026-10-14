@@ -3,7 +3,7 @@ import { html, useEffect, useMemo, useRef, useState } from '../lib/h.js';
 import {
   useSession, useUi, setUi, addClient, updateClient, deleteClient, saveContact, deleteContact, openLog, openEdit, confirmDialog, toast, copyText,
 } from '../lib/store.js';
-import { PALETTE, PHASES } from '../lib/defaults.js';
+import { ERP_SYSTEMS, PALETTE, PHASES } from '../lib/defaults.js';
 import { dateKey, todayKey, parseKey, addDays, startOfWeek, fmtHours, fmtDateLong, fmtDateShort, relativeTime } from '../lib/time.js';
 import { entryMinutes, entryTimeText, renderLine, totalMinutes } from '../lib/notes.js';
 import { processLogo, chooseImage } from '../lib/image.js';
@@ -54,7 +54,7 @@ function ClientList({ data }) {
     .filter((c) => {
       const ql = q.trim().toLowerCase();
       if (!ql) return true;
-      return [c.name, c.kantataProject, c.location, ...(c.contacts || []).map((k) => `${k.name} ${k.email}`)].join(' ').toLowerCase().includes(ql);
+      return [c.name, c.kantataProject, c.location, c.erp, ...(c.contacts || []).map((k) => `${k.name} ${k.email}`)].join(' ').toLowerCase().includes(ql);
     })
     .sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name) : (stats[b.id]?.last || 0) - (stats[a.id]?.last || 0) || a.name.localeCompare(b.name)));
 
@@ -204,6 +204,7 @@ function ClientDetail({ client: c, data }) {
           <div class="hero-meta">
             ${c.kantataProject && html`<span><${Icon} name="clipboard-list" size=${14} /> ${c.kantataProject}</span>`}
             ${c.location && html`<span><${Icon} name="map-pin" size=${14} /> ${c.location}</span>`}
+            ${c.erp && html`<span data-tip="Accounting / ERP"><${Icon} name="calculator" size=${14} /> ${c.erp}</span>`}
             ${c.startDate && html`<span><${Icon} name="calendar" size=${14} /> Started ${fmtDateShort(parseKey(c.startDate))}</span>`}
             ${c.goLiveDate && html`<span><${Icon} name="rocket" size=${14} /> Go-live ${fmtDateShort(parseKey(c.goLiveDate))}</span>`}
             ${c.website && html`<a href=${c.website} target="_blank" rel="noreferrer"><${Icon} name="globe" size=${14} /> Website</a>`}
@@ -361,6 +362,7 @@ export function ClientForm({ client, onClose, count = 0 }) {
     startDate: client?.startDate || '',
     goLiveDate: client?.goLiveDate || '',
     location: client?.location || '',
+    erp: client?.erp || '',
     website: client?.website || '',
     engagementUrl: client?.engagementUrl || '',
     logo: client?.logo || null,
@@ -369,7 +371,10 @@ export function ClientForm({ client, onClose, count = 0 }) {
   const [error, setError] = useState('');
   const [urlError, setUrlError] = useState('');
   const [logoError, setLogoError] = useState('');
-  const set = (k) => (e) => setF((prev) => ({ ...prev, [k]: e?.currentTarget ? e.currentTarget.value : e }));
+  // A saved system that isn't in the list opens with "Other" selected and the name in the text box.
+  const [erpOther, setErpOther] = useState(() => Boolean(client?.erp) && !ERP_SYSTEMS.includes(client.erp));
+  const erpOtherRef = useRef(null);
+  const set =(k) => (e) => setF((prev) => ({ ...prev, [k]: e?.currentTarget ? e.currentTarget.value : e }));
 
   const pickLogo = async (file) => {
     try {
@@ -386,7 +391,7 @@ export function ClientForm({ client, onClose, count = 0 }) {
     if (!f.name.trim()) return setError('Give the client a name.');
     const engagementUrl = normalizeUrl(f.engagementUrl);
     if (engagementUrl === null) return setUrlError('That doesn’t look like a web link. Paste the full address from your browser.');
-    const fields = { ...f, name: f.name.trim(), kantataProject: f.kantataProject.trim(), website: normalizeUrl(f.website) || '', engagementUrl };
+    const fields = { ...f, name: f.name.trim(), kantataProject: f.kantataProject.trim(), erp: f.erp.trim(), website: normalizeUrl(f.website) || '', engagementUrl };
     if (client) {
       updateClient(client.id, fields);
       toast('Client saved', { icon: 'circle-check' });
@@ -431,11 +436,24 @@ export function ClientForm({ client, onClose, count = 0 }) {
         <${Field} label="Phase">
           <select class="input" value=${f.phase} onChange=${set('phase')}>${PHASES.map((p) => html`<option value=${p}>${p}</option>`)}</select>
         <//>
-        <${Field} label="Location"><input class="input" value=${f.location} onInput=${set('location')} placeholder="City, State" /><//>
+        <${Field} label="Accounting / ERP">
+          <select class="input" value=${erpOther ? '__other' : f.erp} onChange=${(e) => {
+            const v = e.currentTarget.value;
+            setErpOther(v === '__other');
+            if (v === '__other') setTimeout(() => erpOtherRef.current?.focus());
+            setF((prev) => ({ ...prev, erp: v === '__other' ? (ERP_SYSTEMS.includes(prev.erp) ? '' : prev.erp) : v }));
+          }}>
+            <option value="">Not set</option>
+            ${ERP_SYSTEMS.map((x) => html`<option value=${x}>${x}</option>`)}
+            <option value="__other">Other…</option>
+          </select>
+          ${erpOther && html`<input class="input erp-other" value=${f.erp} onInput=${set('erp')} placeholder="System name, e.g. Acumatica" ref=${erpOtherRef} />`}
+        <//>
         <${Field} label="Project start"><input class="input" type="date" value=${f.startDate} onInput=${set('startDate')} /><//>
         <${Field} label="Target go-live"><input class="input" type="date" value=${f.goLiveDate} onInput=${set('goLiveDate')} /><//>
+        <${Field} label="Location"><input class="input" value=${f.location} onInput=${set('location')} placeholder="City, State" /><//>
+        <${Field} label="Website"><input class="input" value=${f.website} onInput=${set('website')} placeholder="example.com" /><//>
       </div>
-      <${Field} label="Website"><input class="input" value=${f.website} onInput=${set('website')} placeholder="example.com" /><//>
       <${Field} label="Color" group><${ColorPicker} value=${f.color} onChange=${(v) => setF({ ...f, color: v })} /><//>
       <${Switch} checked=${f.active} onChange=${(v) => setF({ ...f, active: v })} label="Active project" hint="Inactive clients are hidden from the Log Action picker but keep all their history." />
     </div>

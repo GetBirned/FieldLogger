@@ -32,10 +32,10 @@
   --accent-softer: color-mix(in oklab, var(--accent-lift) 7%, transparent);
   --accent-border: color-mix(in oklab, var(--accent-lift) 42%, transparent);
   --accent-glow: color-mix(in oklab, var(--accent-lift) 45%, transparent);
-  /* The logo tile is always navy, so the pin's colors are lifted for deep accents. */
-  --logo-a: oklch(from var(--accent) max(calc(l + 0.1), 0.74) c calc(h + 18));
-  --logo-b: oklch(from var(--accent) max(l, 0.6) c h);
-  --logo-c: oklch(from var(--accent-2) max(l, 0.5) c h);
+  /* Logo gradient: the accent as-is on light surfaces; dark mode lifts it so deep accents stay visible. */
+  --logo-a: oklch(from var(--accent) calc(l + 0.08) c calc(h + 18));
+  --logo-b: var(--accent);
+  --logo-c: var(--accent-2);
 
   --font: 'Inter Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Outfit Variable', 'Inter Variable', 'Segoe UI Variable Display', system-ui, sans-serif;
@@ -105,6 +105,9 @@
   --aurora-o: 0.2;
   --accent-lift: oklch(from var(--accent) max(l, 0.66) c h);
   --accent-text: oklch(from var(--accent) max(l, 0.76) calc(c * 0.92) h);
+  --logo-a: oklch(from var(--accent) max(calc(l + 0.1), 0.74) c calc(h + 18));
+  --logo-b: oklch(from var(--accent) max(l, 0.6) c h);
+  --logo-c: oklch(from var(--accent-2) max(l, 0.5) c h);
 }
 
 /* Trimble Gray dark mode: charcoal surfaces built on #252a2e. */
@@ -1416,3 +1419,5 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+.erp-other { margin-top: 8px; }

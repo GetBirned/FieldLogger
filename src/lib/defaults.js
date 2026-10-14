@@ -90,6 +90,9 @@ export const ACTION_ICONS = [
   'search', 'refresh-cw', 'badge-check', 'party-popper',
 ];
 
+// Accounting / ERP systems offered on the client form. Anything else is typed in as "Other".
+export const ERP_SYSTEMS = ['Vista', 'Spectrum', 'Sage 100', 'Sage 300', 'Sage 50', 'QuickBooks', 'Foundation'];
+
 export const PHASES = ['Sales Handoff', 'Kickoff', 'Data Setup', 'Configuration', 'Training', 'Go-Live', 'Complete'];
 
 export const NOTE_TOKENS = [

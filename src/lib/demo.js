@@ -15,7 +15,7 @@ const CLIENTS = [
   {
     name: 'Granite Ridge Paving', color: '#f97316', kantataProject: 'GRP - B2W Estimate & Track Implementation', phase: 'Configuration',
     logo: DEMO_LOGOS.granite, engagement: 'https://example.com/engagements/granite-ridge',
-    location: 'Boise, ID', website: 'https://example.com', start: -34, golive: 41,
+    location: 'Boise, ID', erp: 'Vista', website: 'https://example.com', start: -34, golive: 41,
     notes: 'Estimating team of 6. Wants bid item templates mirrored from their old spreadsheets.\nPrimary pain point: equipment rate tables.',
     contacts: [
       { name: 'Jamie Ortiz', role: 'Chief Estimator', email: 'jamie.ortiz@example.com', phone: '(208) 555-0142', poc: true },
@@ -24,7 +24,7 @@ const CLIENTS = [
   },
   {
     name: 'Summit Civil Constructors', color: '#3b82f6', kantataProject: 'SCC - Schedule & Maintain Rollout', phase: 'Training',
-    location: 'Denver, CO', start: -61, golive: 12,
+    location: 'Denver, CO', erp: 'Spectrum', start: -61, golive: 12,
     notes: 'Field supervisors trained in two waves. Wave 2 scheduled after Thanksgiving.',
     contacts: [
       { name: 'Marcus Bell', role: 'Operations Director', email: 'mbell@example.com', phone: '(303) 555-0108', poc: true },
@@ -34,20 +34,20 @@ const CLIENTS = [
   {
     name: 'Blue Mesa Excavation', color: '#10b981', kantataProject: 'BME - Track Implementation', phase: 'Data Setup',
     logo: DEMO_LOGOS.mesa, engagement: 'https://example.com/engagements/blue-mesa',
-    location: 'Albuquerque, NM', start: -12, golive: 70,
+    location: 'Albuquerque, NM', erp: 'Sage 300', start: -12, golive: 70,
     notes: 'Needs cost code import from Viewpoint export. Waiting on final employee list.',
     contacts: [{ name: 'Rosa Delgado', role: 'Controller', email: 'rosa.d@example.com', phone: '(505) 555-0163', poc: true }],
   },
   {
     name: 'Ironwood Aggregates', color: '#8b5cf6', kantataProject: 'IWA - Estimate Upgrade', phase: 'Kickoff',
     logo: DEMO_LOGOS.ironwood,
-    location: 'Tulsa, OK', start: -3, golive: 95,
+    location: 'Tulsa, OK', erp: 'Foundation', start: -3, golive: 95,
     notes: 'Sales handoff complete. Kickoff deck sent.',
     contacts: [{ name: 'Dale Hutchins', role: 'VP Construction', email: 'dhutchins@example.com', phone: '(918) 555-0131', poc: true }],
   },
   {
     name: 'Cascade Earthworks', color: '#ec4899', kantataProject: 'CEW - B2W Suite', phase: 'Complete',
-    location: 'Tacoma, WA', start: -160, golive: -20, active: false,
+    location: 'Tacoma, WA', erp: 'QuickBooks', start: -160, golive: -20, active: false,
     notes: 'Live since September. Handed off to support.',
     contacts: [{ name: 'Sam Whitaker', role: 'Project Controls', email: 'sam.w@example.com', phone: '(253) 555-0190', poc: true }],
   },
@@ -92,6 +92,7 @@ export function buildDemoData(actionTypes) {
     kantataProject: c.kantataProject,
     phase: c.phase,
     location: c.location || '',
+    erp: c.erp || '',
     website: c.website || '',
     engagementUrl: c.engagement || '',
     logo: c.logo ? svgUrl(c.logo) : null,

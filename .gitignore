@@ -4,3 +4,4 @@ dist/
 .snaps/
 .claude/
 docs/build-conversation.md
+release/
