@@ -1,7 +1,7 @@
 // FieldLogger - Electron main process.
 // Owns the window, the on-disk data store and everything the renderer is not
 // allowed to touch directly (file system, dialogs, clipboard, shell).
-const { app, BrowserWindow, ipcMain, nativeTheme, shell, dialog, clipboard, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme, shell, dialog, clipboard, Menu, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -630,6 +630,33 @@ function loadWindowState() {
   const s = readJson(WINDOW_STATE_FILE, {});
   return { width: s.width || 1440, height: s.height || 900, x: s.x, y: s.y, maximized: Boolean(s.maximized) };
 }
+
+// The saved spot may be on a monitor that's no longer connected. Keep it only if the title
+// bar would be on a screen the user can see now; otherwise open centered, sized to fit.
+function onScreen(state) {
+  const { workArea: primary } = screen.getPrimaryDisplay();
+  const size = { width: Math.min(state.width, primary.width), height: Math.min(state.height, primary.height) };
+  if (!Number.isFinite(state.x) || !Number.isFinite(state.y)) return size;
+  const visible = screen.getAllDisplays().some(({ workArea: a }) => state.x + size.width - 120 > a.x && state.x + 120 < a.x + a.width
+    && state.y >= a.y - 10 && state.y + TITLEBAR_HEIGHT < a.y + a.height);
+  return visible ? { ...size, x: state.x, y: state.y } : size;
+}
+
+// Bring the window back where it can be seen (restored, shown, on screen, focused).
+function revealWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  if (!mainWindow.isVisible()) mainWindow.show();
+  if (!mainWindow.isMaximized()) {
+    const fixed = onScreen(mainWindow.getBounds());
+    if (fixed.x === undefined) {
+      // Center on the main screen (center() would pick whichever screen is nearest).
+      const a = screen.getPrimaryDisplay().workArea;
+      mainWindow.setBounds({ ...fixed, x: Math.round(a.x + (a.width - fixed.width) / 2), y: Math.round(a.y + (a.height - fixed.height) / 2) });
+    }
+  }
+  mainWindow.focus();
+}
 function saveWindowState(win) {
   if (!win || win.isDestroyed()) return;
   const maximized = win.isMaximized();
@@ -639,14 +666,12 @@ function saveWindowState(win) {
 
 function createWindow() {
   const state = loadWindowState();
+  const bounds = onScreen(state);
   const dark = nativeTheme.shouldUseDarkColors;
   const bg = dark ? '#0b0d12' : '#f4f5f8';
 
   mainWindow = new BrowserWindow({
-    width: state.width,
-    height: state.height,
-    x: state.x,
-    y: state.y,
+    ...bounds,
     minWidth: 1080,
     minHeight: 680,
     show: false,
@@ -669,6 +694,10 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     if (!process.env.FIELDLOGGER_SELFTEST) mainWindow.show();
   });
+  // Never stay invisible: if the first paint is slow or stalls, show the window anyway.
+  setTimeout(() => {
+    if (!process.env.FIELDLOGGER_SELFTEST && mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) mainWindow.show();
+  }, 5000);
   if (process.env.FIELDLOGGER_SELFTEST) runSelfTest(mainWindow);
 
   // Links (mailto:, tel:, websites) open outside the app; the app itself never navigates away.
@@ -807,10 +836,10 @@ function runSelfTest(win) {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  // Opening FieldLogger again while it's running brings its window back into view.
   app.on('second-instance', () => {
-    if (!mainWindow) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
+    if (!mainWindow || mainWindow.isDestroyed()) createWindow();
+    else revealWindow();
   });
 
   app.whenReady().then(() => {

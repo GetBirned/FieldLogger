@@ -4,6 +4,15 @@
 
 export const CHANGELOG = [
   {
+    version: '1.6.1',
+    date: '2026-10-15',
+    title: 'Window always opens where you can see it',
+    items: [
+      { kind: 'fixed', text: 'If FieldLogger was last used on a monitor that isn’t connected now, its window opened off-screen. It now opens centered on your main screen.' },
+      { kind: 'fixed', text: 'Opening FieldLogger while it’s already running brings its window back into view.' },
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-10-14',
     title: 'Update in one click',
