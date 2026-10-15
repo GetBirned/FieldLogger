@@ -90,7 +90,7 @@ export const ACTION_ICONS = [
 ];
 
 // Accounting / ERP systems offered on the client form. Anything else is typed in as "Other".
-export const ERP_SYSTEMS = ['Vista', 'Spectrum', 'Sage 100', 'Sage 300', 'Sage 50', 'QuickBooks', 'Foundation'];
+export const ERP_SYSTEMS = ['Vista', 'Spectrum', 'Sage 100', 'Sage 300', 'Sage 50', 'QuickBooks', 'Foundation', 'ComputerEase'];
 
 // Logo for each listed system, in assets/erp (generated from erp_logos/ by `npm run erp-logos`).
 // Paths are relative to src/index.html.
@@ -102,6 +102,7 @@ export const ERP_LOGOS = {
   'Sage 50': '../assets/erp/sage.png',
   QuickBooks: '../assets/erp/quickbooks.png',
   Foundation: '../assets/erp/foundation.png',
+  ComputerEase: '../assets/erp/computerease.png',
 };
 
 export const PHASES = ['Sales Handoff', 'Kickoff', 'Data Setup', 'Configuration', 'Training', 'Go-Live', 'Complete'];

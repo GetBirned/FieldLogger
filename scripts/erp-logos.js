@@ -22,6 +22,7 @@ const LOGOS = {
   sage: 'sage_logo.webp',
   quickbooks: 'quickbooks_logo.png',
   foundation: 'foundation_logo.png',
+  computerease: 'computerEase.png',
 };
 
 // Runs in the page: draw the image, find the bounding box of visible pixels

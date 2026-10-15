@@ -9,6 +9,7 @@ export const CHANGELOG = [
     title: 'ERP logos',
     items: [
       { kind: 'new', text: 'Each client’s ERP system now shows its logo on the client card, the client page and the client form.' },
+      { kind: 'new', text: 'ComputerEase added to the ERP list.' },
     ],
   },
   {
