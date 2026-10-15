@@ -1433,3 +1433,9 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 }
 
 .erp-other { margin-top: 8px; }
+.erp-select { display: flex; align-items: center; gap: 8px; }
+.erp-select .input { flex: 1; min-width: 0; }
+/* ERP logos always sit on the light plate: several are dark blue and vanish on dark surfaces. */
+.erp-plate { flex: none; display: inline-grid; place-items: center; }
+.erp-fallback { flex: none; display: inline-grid; place-items: center; border-radius: 6px; background: var(--surface-3); color: var(--muted); }
+.cc-erp { flex: none; display: inline-flex; }

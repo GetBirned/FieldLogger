@@ -1,7 +1,7 @@
 {
   "name": "fieldlogger",
   "productName": "FieldLogger",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Log consultant actions on a calendar and turn them into Kantata-ready notes.",
   "main": "main.js",
   "author": "FieldLogger",
@@ -11,6 +11,7 @@
     "preview": "node scripts/serve.js",
     "vendor": "node scripts/vendor.js",
     "icon": "electron scripts/render-icon.js",
+    "erp-logos": "electron scripts/erp-logos.js",
     "snap": "electron scripts/snap.js",
     "build": "electron-builder --win nsis",
     "build:portable": "electron-builder --win portable"

@@ -51,6 +51,17 @@ export function ClientAvatar({ client, size = 36, class: cls }) {
   return html`<${Avatar} name=${client?.name || '?'} color=${client?.color || '#64748b'} size=${size} square class=${cls} />`;
 }
 
+// A client's accounting / ERP system as a logo plate; systems without a logo get a calculator icon.
+export function ErpLogo({ erp, logos, size = 20, class: cls }) {
+  const src = logos[erp];
+  if (!src) {
+    return html`<span class=${cx('erp-fallback', cls)} style=${{ width: `${size}px`, height: `${size}px` }}><${Icon} name="calculator" size=${Math.round(size * 0.62)} /></span>`;
+  }
+  return html`<span class=${cx('logo-plate', 'erp-plate', size <= 20 && 'is-tiny', cls)} style=${{ width: `${size}px`, height: `${size}px` }}>
+    <img src=${src} alt="" draggable="false" />
+  </span>`;
+}
+
 // Ctrl+V with a copied picture calls onFile(File) while the caller is mounted.
 export function usePasteImage(onFile) {
   const ref = useRef(onFile);

@@ -3,12 +3,12 @@ import { html, useEffect, useMemo, useRef, useState } from '../lib/h.js';
 import {
   useSession, useUi, setUi, addClient, updateClient, deleteClient, saveContact, deleteContact, openLog, openEdit, confirmDialog, toast, copyText,
 } from '../lib/store.js';
-import { ERP_SYSTEMS, PALETTE, PHASES } from '../lib/defaults.js';
+import { ERP_LOGOS, ERP_SYSTEMS, PALETTE, PHASES } from '../lib/defaults.js';
 import { dateKey, todayKey, parseKey, addDays, startOfWeek, fmtHours, fmtDateLong, fmtDateShort, relativeTime } from '../lib/time.js';
 import { entryMinutes, entryTimeText, renderLine, totalMinutes } from '../lib/notes.js';
 import { processLogo, chooseImage } from '../lib/image.js';
 import {
-  Avatar, Button, ClientAvatar, ColorPicker, CopyButton, EmptyState, Field, Icon, IconButton, ImageDrop, Menu, Modal, Segmented, Switch, TypeBadge, cx, usePasteImage,
+  Avatar, Button, ClientAvatar, ColorPicker, CopyButton, EmptyState, ErpLogo, Field, Icon, IconButton, ImageDrop, Menu, Modal, Segmented, Switch, TypeBadge, cx, usePasteImage,
 } from './ui.js';
 
 export function ClientsView() {
@@ -115,6 +115,7 @@ function ClientCard({ client: c, stats, index }) {
         <span class="cc-name">${c.name}</span>
         <span class="cc-project">${c.kantataProject || 'No Kantata project set'}</span>
       </div>
+      ${c.erp && html`<span class="cc-erp" data-tip=${c.erp}><${ErpLogo} erp=${c.erp} logos=${ERP_LOGOS} size=${28} /></span>`}
       ${!c.active && html`<span class="badge badge-muted">Inactive</span>`}
     </div>
     <div class="cc-phase">
@@ -204,7 +205,7 @@ function ClientDetail({ client: c, data }) {
           <div class="hero-meta">
             ${c.kantataProject && html`<span><${Icon} name="clipboard-list" size=${14} /> ${c.kantataProject}</span>`}
             ${c.location && html`<span><${Icon} name="map-pin" size=${14} /> ${c.location}</span>`}
-            ${c.erp && html`<span data-tip="Accounting / ERP"><${Icon} name="calculator" size=${14} /> ${c.erp}</span>`}
+            ${c.erp && html`<span data-tip="Accounting / ERP"><${ErpLogo} erp=${c.erp} logos=${ERP_LOGOS} size=${18} /> ${c.erp}</span>`}
             ${c.startDate && html`<span><${Icon} name="calendar" size=${14} /> Started ${fmtDateShort(parseKey(c.startDate))}</span>`}
             ${c.goLiveDate && html`<span><${Icon} name="rocket" size=${14} /> Go-live ${fmtDateShort(parseKey(c.goLiveDate))}</span>`}
             ${c.website && html`<a href=${c.website} target="_blank" rel="noreferrer"><${Icon} name="globe" size=${14} /> Website</a>`}
@@ -437,6 +438,8 @@ export function ClientForm({ client, onClose, count = 0 }) {
           <select class="input" value=${f.phase} onChange=${set('phase')}>${PHASES.map((p) => html`<option value=${p}>${p}</option>`)}</select>
         <//>
         <${Field} label="Accounting / ERP">
+          <div class="erp-select">
+          ${f.erp && html`<${ErpLogo} erp=${f.erp} logos=${ERP_LOGOS} size=${36} />`}
           <select class="input" value=${erpOther ? '__other' : f.erp} onChange=${(e) => {
             const v = e.currentTarget.value;
             setErpOther(v === '__other');
@@ -447,6 +450,7 @@ export function ClientForm({ client, onClose, count = 0 }) {
             ${ERP_SYSTEMS.map((x) => html`<option value=${x}>${x}</option>`)}
             <option value="__other">Other…</option>
           </select>
+          </div>
           ${erpOther && html`<input class="input erp-other" value=${f.erp} onInput=${set('erp')} placeholder="System name, e.g. Acumatica" ref=${erpOtherRef} />`}
         <//>
         <${Field} label="Project start"><input class="input" type="date" value=${f.startDate} onInput=${set('startDate')} /><//>

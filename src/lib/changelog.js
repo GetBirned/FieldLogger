@@ -4,6 +4,14 @@
 
 export const CHANGELOG = [
   {
+    version: '1.2.0',
+    date: '2026-10-14',
+    title: 'ERP logos',
+    items: [
+      { kind: 'new', text: 'Each client’s ERP system now shows its logo on the client card, the client page and the client form.' },
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-10-14',
     title: 'ERP systems and a new look',
