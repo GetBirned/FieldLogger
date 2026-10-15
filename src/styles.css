@@ -1462,3 +1462,20 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .code-tag-lg:hover { border-color: var(--accent-border); color: var(--accent-text); }
 .code-field { width: 130px; flex: none; }
 .input-code { font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* Backups: restore list (Settings and the sign-in recovery card) and the read-only banner. */
+.backup-list { display: flex; flex-direction: column; gap: 6px; }
+.backup-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-2); }
+.backup-row.is-first { border-color: var(--accent-border); background: var(--accent-softer); }
+.backup-icon { width: 32px; height: 32px; flex: none; border-radius: 9px; display: grid; place-items: center; background: var(--surface-3); color: var(--muted); }
+.backup-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.backup-label { font-weight: 650; font-size: 13.5px; color: var(--text); }
+.backup-meta { font-size: 12px; color: var(--muted); }
+.backup-list .link-btn { align-self: flex-start; }
+.gate-recover { width: min(620px, 100%); display: flex; flex-direction: column; gap: 16px; }
+.gate-recover .gate-actions { justify-content: space-between; }
+.gate-recover .gate-title { text-align: left; margin-bottom: 6px; }
+.recover-head { display: flex; gap: 14px; align-items: flex-start; }
+.recover-icon { width: 44px; height: 44px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
+.readonly-banner { display: flex; align-items: center; gap: 10px; margin: 4px 24px 8px; padding: 10px 14px; border-radius: var(--r); border: 1px solid color-mix(in oklab, var(--warn) 45%, transparent); background: color-mix(in oklab, var(--warn) 12%, transparent); color: var(--text); font-size: 13px; }
+.readonly-banner .icon { color: var(--warn); flex: none; }

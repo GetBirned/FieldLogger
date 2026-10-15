@@ -124,6 +124,11 @@ const web = {
       });
     },
   },
+  // Backups live on disk, so the browser preview has none to offer.
+  backups: {
+    async list() { return []; },
+    async restore() { throw new Error('Backups are only available in the desktop app.'); },
+  },
   app: {
     async info() { return { version: 'preview', dataDir: 'Browser storage (preview mode)', packaged: false }; },
     async openDataFolder() { return false; },

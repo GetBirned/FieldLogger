@@ -24,6 +24,10 @@ contextBridge.exposeInMainWorld('fieldlogger', {
     importFile: () => invoke('data:import'),
     exportText: (text, name) => invoke('data:exportText', text, name),
   },
+  backups: {
+    list: (id) => invoke('backups:list', id),
+    restore: (id, key) => invoke('backups:restore', id, key),
+  },
   app: {
     info: () => invoke('app:info'),
     openDataFolder: () => invoke('app:openDataFolder'),

@@ -1,7 +1,8 @@
 // Launch screen: pick a local profile, create one, or unlock one with a PIN.
 import { html, useEffect, useState, useRef } from '../lib/h.js';
 import { bridge } from '../lib/bridge.js';
-import { signIn, loadDemo } from '../lib/store.js';
+import { signIn, loadDemo, useUi, setUi } from '../lib/store.js';
+import { BackupList } from './Backups.js';
 import { PALETTE } from '../lib/defaults.js';
 import { relativeTime } from '../lib/time.js';
 import { processPhoto } from '../lib/image.js';
@@ -15,6 +16,7 @@ export function ProfileGate() {
   const [mode, setMode] = useState('loading');
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState('');
+  const { recovery } = useUi();
 
   useEffect(() => {
     bridge.profiles.list().then(({ lastProfileId, profiles: list }) => {
@@ -49,7 +51,9 @@ export function ProfileGate() {
         <${Wordmark} size=${40} />
       </div>
 
-      ${mode === 'pick' && html`<div class="gate-card">
+      ${recovery && html`<${RecoverProfile} profile=${recovery.profile} onBack=${() => { setUi({ recovery: null }); setError(''); setSelected(null); setMode('pick'); }} />`}
+
+      ${!recovery && mode === 'pick' && html`<div class="gate-card">
         <h2 class="gate-title">Who's logging today?</h2>
         ${error && html`<div class="form-error gate-error"><${Icon} name="triangle-alert" size=${15} /> ${error}</div>`}
         <div class="profile-grid">
@@ -67,8 +71,38 @@ export function ProfileGate() {
         </div>
       </div>`}
 
-      ${mode === 'create' && html`<${CreateProfile} canCancel=${profiles.length > 0} onCancel=${() => setMode('pick')} />`}
-      ${mode === 'pin' && selected && html`<${PinUnlock} profile=${selected} onBack=${() => { setMode('pick'); setSelected(null); }} />`}
+      ${!recovery && mode === 'create' && html`<${CreateProfile} canCancel=${profiles.length > 0} onCancel=${() => setMode('pick')} />`}
+      ${!recovery && mode === 'pin' && selected && html`<${PinUnlock} profile=${selected} onBack=${() => { setMode('pick'); setSelected(null); }} />`}
+    </div>
+  </div>`;
+}
+
+// Shown when a profile's data file exists but couldn't be read. Nothing was changed on
+// disk; restoring a backup puts a good copy back and signs in.
+function RecoverProfile({ profile, onBack }) {
+  const [error, setError] = useState('');
+  const restore = async (b) => {
+    setError('');
+    try {
+      await bridge.backups.restore(profile.id, b.key);
+      await signIn(profile);
+    } catch (err) {
+      setError(err.message || String(err));
+    }
+  };
+  return html`<div class="gate-card gate-recover">
+    <div class="recover-head">
+      <span class="recover-icon"><${Icon} name="shield-check" size=${22} /></span>
+      <div>
+        <h2 class="gate-title">Let's get your data back</h2>
+        <p class="muted">FieldLogger couldn't read the data file for ${profile.name}, so it didn't open it or change anything. Pick a backup to restore. The newest one is usually right. The unreadable file is kept aside, not deleted.</p>
+      </div>
+    </div>
+    ${error && html`<div class="form-error gate-error"><${Icon} name="triangle-alert" size=${15} /> ${error}</div>`}
+    <${BackupList} profileId=${profile.id} onRestore=${restore} highlightFirst limit=${5} />
+    <div class="gate-actions">
+      <${Button} variant="ghost" icon="arrow-left" onClick=${onBack}>Back to profiles<//>
+      <${Button} variant="ghost" icon="folder-open" onClick=${() => bridge.app.openDataFolder()}>Open data folder<//>
     </div>
   </div>`;
 }

@@ -21,7 +21,7 @@ const NAV = [
 ];
 
 export function Shell() {
-  const { profile, data } = useSession();
+  const { profile, data, readOnly } = useSession();
   const u = useUi();
   const collapsed = data.settings.sidebarCollapsed;
 
@@ -29,6 +29,10 @@ export function Shell() {
     <${Sidebar} profile=${profile} data=${data} page=${u.page} collapsed=${collapsed} />
     <main class="main">
       <${Topbar} page=${u.page} data=${data} profile=${profile} />
+      ${readOnly && html`<div class="readonly-banner" role="status">
+        <${Icon} name="lock" size=${15} />
+        <span>Read-only. This data was saved by a newer version of FieldLogger, so this version won't change it. Install the latest version to keep working.</span>
+      </div>`}
       <div class="page" key=${u.page}>
         ${u.page === 'calendar' && html`<${CalendarView} />`}
         ${u.page === 'clients' && html`<${ClientsView} />`}

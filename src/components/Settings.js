@@ -2,16 +2,17 @@
 import { html, useEffect, useMemo, useState } from '../lib/h.js';
 import {
   useSession, useUi, setUi, setSettings, saveActionType, deleteActionType, moveActionType, restoreDefaultActionTypes,
-  updateProfile, setProfilePin, signOut, lock, replaceData, loadDemo, removeDemo, confirmDialog, toast, flush,
+  updateProfile, setProfilePin, signOut, lock, replaceData, reloadData, loadDemo, removeDemo, confirmDialog, toast, flush,
 } from '../lib/store.js';
 import { processPhoto } from '../lib/image.js';
 import { bridge, isElectron } from '../lib/bridge.js';
-import { ACCENTS, BRAND_PALETTES, ACTION_ICONS, NOTE_TOKENS, DEFAULT_TEMPLATE, PALETTE, APP_NAME, uid } from '../lib/defaults.js';
+import { ACCENTS, BRAND_PALETTES, ACTION_ICONS, NOTE_TOKENS, DEFAULT_TEMPLATE, PALETTE, APP_NAME, isNewerData, uid } from '../lib/defaults.js';
 import { renderLine } from '../lib/notes.js';
 import { fmtHourLabel, fmtDateLong, parseKey } from '../lib/time.js';
 import { CHANGELOG, LATEST_VERSION } from '../lib/changelog.js';
 import { Avatar, Button, ColorPicker, Field, Icon, IconButton, ImageDrop, Kbd, Modal, Segmented, Switch, TypeBadge, cx, usePasteImage } from './ui.js';
 import { LogoMark, Wordmark } from './Logo.js';
+import { BackupList } from './Backups.js';
 
 const TABS = [
   { id: 'appearance', label: 'Appearance', icon: 'palette' },
@@ -435,15 +436,34 @@ function DataSettings({ data, profile }) {
     }
     if (!raw) return;
     if (!Array.isArray(raw.entries) || !Array.isArray(raw.clients)) return toast("That file isn't a FieldLogger backup.", { tone: 'error' });
+    if (isNewerData(raw)) return toast('That backup was made by a newer version of FieldLogger. Install the latest version, then import it.', { tone: 'error' });
     const ok = await confirmDialog({
       title: 'Replace your data with this backup?',
-      message: `The backup has ${raw.clients.length} clients and ${raw.entries.length} entries. Your current ${data.clients.length} clients and ${data.entries.length} entries will be replaced. A daily safety copy is kept in the data folder.`,
+      message: `The backup has ${raw.clients.length} clients and ${raw.entries.length} entries. Your current ${data.clients.length} clients and ${data.entries.length} entries will be replaced. Your current data is kept as a backup, so you can restore it below.`,
       confirmLabel: 'Replace data',
       danger: true,
     });
     if (!ok) return;
     replaceData(raw);
     toast('Backup imported', { icon: 'upload' });
+  };
+
+  const restoreBackup = async (b) => {
+    const ok = await confirmDialog({
+      title: 'Restore this backup?',
+      message: `Your data goes back to the ${b.label.toLowerCase()} copy from ${fmtDateLong(b.at)}: ${b.clients} clients and ${b.entries} entries. You have ${data.clients.length} clients and ${data.entries.length} entries now. Your current data is kept as a copy first, so you can switch back.`,
+      confirmLabel: 'Restore',
+      icon: 'rotate-ccw',
+    });
+    if (!ok) return;
+    try {
+      await flush();
+      await bridge.backups.restore(profile.id, b.key);
+      await reloadData();
+      toast('Backup restored', { icon: 'rotate-ccw' });
+    } catch (err) {
+      toast(`Couldn't restore: ${err.message || err}`, { tone: 'error' });
+    }
   };
 
   const deleteProfile = async () => {
@@ -466,9 +486,14 @@ function DataSettings({ data, profile }) {
         <code>${info?.dataDir || '…'}</code>
         ${isElectron && html`<${Button} size="sm" onClick=${() => bridge.app.openDataFolder()}>Open folder<//>`}
       </div>
-      <p class="set-hint">FieldLogger saves as you work and keeps a daily snapshot of your data for the last 14 days in the <code>backups</code> folder.</p>
+      <p class="set-hint">FieldLogger saves as you work. In the <code>backups</code> folder it keeps a copy from each of the last 14 days, the version before your last save, and a full copy taken before every update. Updating or uninstalling never touches this folder.</p>
     <//>
-    <${Section} title="Backup & restore" desc="Move to a new computer, or keep your own copy.">
+    <${Section} title="Restore a backup" desc="Put your data back the way it was. Your current data is kept as a copy first.">
+      ${isElectron
+        ? html`<${BackupList} profileId=${profile.id} onRestore=${restoreBackup} />`
+        : html`<p class="set-hint">Backups are kept by the desktop app.</p>`}
+    <//>
+    <${Section} title="Export & import" desc="Move to a new computer, or keep your own copy.">
       <div class="row-gap">
         <${Button} icon="download" onClick=${exportBackup}>Export backup (.json)<//>
         <${Button} icon="upload" onClick=${importBackup}>Import backup<//>

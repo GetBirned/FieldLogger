@@ -1,7 +1,7 @@
 {
   "name": "fieldlogger",
   "productName": "FieldLogger",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Log consultant actions on a calendar and turn them into Kantata-ready notes.",
   "main": "main.js",
   "author": "FieldLogger",

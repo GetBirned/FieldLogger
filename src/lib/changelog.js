@@ -4,6 +4,17 @@
 
 export const CHANGELOG = [
   {
+    version: '1.4.0',
+    date: '2026-10-14',
+    title: 'Safer updates and one-click restore',
+    items: [
+      { kind: 'new', text: 'Before a new version opens your data for the first time, FieldLogger copies all of it aside, so an update can always be undone.' },
+      { kind: 'new', text: 'Restore a backup in Settings → Data & backup: pick a daily copy, the copy from before your last save, or the one from before an update. Your current data is kept as a copy first.' },
+      { kind: 'new', text: 'If a profile’s data file ever can’t be read, FieldLogger stops and offers to restore a backup instead of opening an empty profile. The unreadable file is kept aside.' },
+      { kind: 'improved', text: 'Every save keeps the version it replaced, and data saved by a newer version opens read-only in an older one so it can’t be overwritten.' },
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-10-14',
     title: 'Implementations and Kantata milestones',

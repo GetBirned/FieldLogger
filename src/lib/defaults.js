@@ -1,7 +1,24 @@
 // App-wide constants and the starting data for a new profile.
 
 export const APP_NAME = 'FieldLogger';
-export const DATA_VERSION = 1;
+// Bump DATA_VERSION whenever the shape of saved data changes, and add a MIGRATIONS step
+// that upgrades data from the version before. Steps run on load, after main.js has
+// snapshotted the data folder. Data from a newer FieldLogger opens read-only instead.
+export const DATA_VERSION = 2;
+
+const MIGRATIONS = {
+  // 1.3.0 added implementations and customer codes to clients.
+  2: (d) => ({ ...d, clients: (d.clients || []).map((c) => ({ implementations: [], customerCode: '', ...c })) }),
+};
+
+export const dataVersionOf = (raw) => Number(raw?.version) || 1;
+export const isNewerData = (raw) => dataVersionOf(raw) > DATA_VERSION;
+
+function migrate(raw) {
+  let d = raw;
+  for (let v = dataVersionOf(raw) + 1; v <= DATA_VERSION; v++) if (MIGRATIONS[v]) d = MIGRATIONS[v](d);
+  return d;
+}
 
 export const ACCENTS = [
   { id: 'safety', name: 'Safety Orange', value: '#f97316' },
@@ -192,10 +209,13 @@ export function freshData(profile) {
 export function normalizeData(raw, profile) {
   const base = freshData(profile);
   if (!raw || typeof raw !== 'object') return base;
+  const newer = isNewerData(raw);
+  if (!newer) raw = migrate(raw);
   return {
     ...base,
     ...raw,
-    version: DATA_VERSION,
+    // Newer data keeps its version, so it is never saved back as an older one.
+    version: newer ? dataVersionOf(raw) : DATA_VERSION,
     settings: { ...DEFAULT_SETTINGS, ...(raw.settings || {}) },
     actionTypes: Array.isArray(raw.actionTypes) && raw.actionTypes.length ? raw.actionTypes : base.actionTypes,
     clients: Array.isArray(raw.clients) ? raw.clients.map((c) => ({ contacts: [], notes: '', active: true, implementations: [], ...c })) : [],

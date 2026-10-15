@@ -2,7 +2,7 @@
 // state (page, selected date, open dialogs, toasts).
 import { useState, useEffect } from './h.js';
 import { bridge } from './bridge.js';
-import { normalizeData, freshData, uid, DEFAULT_ACTION_TYPES } from './defaults.js';
+import { normalizeData, freshData, uid, isNewerData, DEFAULT_ACTION_TYPES } from './defaults.js';
 import { todayKey } from './time.js';
 import { buildDemoData } from './demo.js';
 
@@ -22,8 +22,10 @@ function createStore(initial) {
   };
 }
 
-export const session = createStore({ profile: null, data: null });
+// readOnly: the data was saved by a newer FieldLogger, so nothing is saved back.
+export const session = createStore({ profile: null, data: null, readOnly: false });
 export const ui = createStore({
+  recovery: null, // { profile, message } when a profile's data file couldn't be read
   page: 'calendar',
   calView: 'day',
   date: todayKey(),
@@ -57,8 +59,8 @@ function scheduleSave() {
 
 export async function flush() {
   clearTimeout(saveTimer);
-  const { profile, data } = session.get();
-  if (!dirty || !profile || !data) return;
+  const { profile, data, readOnly } = session.get();
+  if (!dirty || !profile || !data || readOnly) return;
   dirty = false;
   try {
     await bridge.data.save(profile.id, data);
@@ -69,8 +71,8 @@ export async function flush() {
 }
 
 export function flushSync() {
-  const { profile, data } = session.get();
-  if (!dirty || !profile || !data) return;
+  const { profile, data, readOnly } = session.get();
+  if (!dirty || !profile || !data || readOnly) return;
   bridge.data.saveSync(profile.id, data);
   dirty = false;
 }
@@ -80,6 +82,10 @@ if (typeof window !== 'undefined') window.addEventListener('beforeunload', flush
 export function updateData(fn) {
   const s = session.get();
   if (!s.data) return;
+  if (s.readOnly) {
+    toast('Read-only: this data was saved by a newer FieldLogger. Install the latest version to make changes.', { tone: 'error', icon: 'lock' });
+    return;
+  }
   const next = fn(s.data);
   if (!next || next === s.data) return;
   session.set({ ...s, data: next });
@@ -95,24 +101,46 @@ export async function signIn(profile) {
   // Register the visit first: if the profile isn't on file, write nothing.
   const touched = await bridge.profiles.touch(profile.id);
   if (!touched) throw new Error('That profile is no longer on this computer.');
-  const raw = await bridge.data.load(profile.id);
+  let raw;
+  try {
+    raw = await bridge.data.load(profile.id);
+  } catch (err) {
+    // The file exists but can't be read. Never start empty over it: ask to restore a backup.
+    if (String(err?.message).includes('FL_UNREADABLE')) {
+      ui.set((s) => ({ ...s, recovery: { profile: touched } }));
+      throw new Error(`${touched.name}'s data couldn't be read, so nothing was changed. Restore a backup to continue.`);
+    }
+    throw err;
+  }
+  // null means there is no data file yet (a brand new profile).
   const data = raw ? normalizeData(raw, touched) : freshData(touched);
   if (!raw) await bridge.data.save(profile.id, data);
-  ui.set((s) => ({ ...s, page: 'calendar', calView: data.settings.defaultView || 'day', date: todayKey(), clientId: null, log: null, confirm: null }));
-  session.set({ profile: touched, data });
+  ui.set((s) => ({ ...s, page: 'calendar', calView: data.settings.defaultView || 'day', date: todayKey(), clientId: null, log: null, confirm: null, recovery: null }));
+  session.set({ profile: touched, data, readOnly: isNewerData(raw) });
+}
+
+// Re-read the signed-in profile's data from disk (after restoring a backup).
+export async function reloadData() {
+  const { profile } = session.get();
+  clearTimeout(saveTimer);
+  dirty = false;
+  const raw = await bridge.data.load(profile.id);
+  const data = raw ? normalizeData(raw, profile) : freshData(profile);
+  session.set({ profile, data, readOnly: isNewerData(raw) });
+  return data;
 }
 
 // Lock keeps you as the last profile, so the launch screen asks for your PIN.
 export async function lock() {
   await flush();
-  session.set({ profile: null, data: null });
+  session.set({ profile: null, data: null, readOnly: false });
 }
 
 // Switching forgets the last profile, so the launch screen shows the picker.
 export async function signOut() {
   await flush();
   await bridge.profiles.forget();
-  session.set({ profile: null, data: null });
+  session.set({ profile: null, data: null, readOnly: false });
 }
 
 export async function updateProfile(patch) {

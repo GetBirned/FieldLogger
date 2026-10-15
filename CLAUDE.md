@@ -36,6 +36,11 @@ Fully offline: no server, no accounts. The full build conversation is kept local
   (`pinOnLaunch`). Lock keeps the last profile; Switch profile forgets it.
 - Releases: every user-facing change bumps `version` in `package.json` (minor for features, patch for fixes)
   and adds a matching entry at the top of `src/lib/changelog.js`, which Settings → Update log displays.
+- Data safety (don't weaken these): a data file that exists but can't be read is never replaced. `data:load`
+  throws `FL_UNREADABLE`, saves to it are refused, and the sign-in screen offers `backups:restore`. Each save keeps
+  `<id>-previous.json`; the first launch of a new version copies the data folder to `backups/pre-update-*` before
+  anything reads it. Changing the saved data shape means bumping `DATA_VERSION` and adding a `MIGRATIONS` step in
+  `src/lib/defaults.js`. Newer data opens read-only, and main refuses saves with an older data version.
 - `signIn` registers the profile before writing data. `profiles:list` re-adopts unregistered data files as "Recovered profile".
 
 ## Verifying changes

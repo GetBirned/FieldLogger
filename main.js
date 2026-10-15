@@ -21,7 +21,12 @@ const PROFILE_DATA_DIR = path.join(DATA_DIR, 'profiles');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 const WINDOW_STATE_FILE = path.join(app.getPath('userData'), 'window-state.json');
+const APP_STATE_FILE = path.join(app.getPath('userData'), 'app-state.json');
 const BACKUPS_TO_KEEP = 14;
+const UPDATE_SNAPSHOTS_TO_KEEP = 5;
+const RESTORE_COPIES_TO_KEEP = 5;
+// Prefix on the error a renderer gets when a data file exists but can't be read.
+const UNREADABLE = 'FL_UNREADABLE';
 const TITLEBAR_HEIGHT = 56;
 
 for (const dir of [DATA_DIR, PROFILE_DATA_DIR, BACKUP_DIR]) fs.mkdirSync(dir, { recursive: true });
@@ -81,6 +86,62 @@ function dailyBackup(id) {
     }
   } catch (err) {
     console.error('Backup failed', err);
+  }
+}
+
+// Read a JSON file, retrying briefly in case antivirus or an indexer holds it.
+// Returns undefined if the file doesn't exist; throws if it exists but can't be read.
+function readJsonStrict(file) {
+  if (!fs.existsSync(file)) return undefined;
+  let lastErr;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const value = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (value && typeof value === 'object') return value;
+      lastErr = new Error('the file is empty or not FieldLogger data');
+    } catch (err) {
+      lastErr = err;
+    }
+    const until = Date.now() + 60;
+    while (Date.now() < until) { /* brief spin before retrying */ }
+  }
+  throw lastErr;
+}
+
+const stamp = () => new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15); // 20261014-213005
+
+// Keep the newest `keep` entries in BACKUP_DIR whose names match, delete the rest.
+function prune(match, keep) {
+  try {
+    const names = fs.readdirSync(BACKUP_DIR).filter(match).sort();
+    for (const old of names.slice(0, Math.max(0, names.length - keep))) {
+      fs.rmSync(path.join(BACKUP_DIR, old), { recursive: true, force: true });
+    }
+  } catch (err) {
+    console.error('Pruning backups failed', err);
+  }
+}
+
+// The first time a new version starts, copy all data aside before anything can read or
+// migrate it, so a bad update is always one restore away from undone.
+function snapshotBeforeUpdate() {
+  const version = app.getVersion();
+  const state = readJson(APP_STATE_FILE, {});
+  if (state.lastVersion === version) return;
+  try {
+    const dataFiles = fs.readdirSync(PROFILE_DATA_DIR).filter((f) => f.endsWith('.json'));
+    if (dataFiles.length || fs.existsSync(PROFILES_FILE)) {
+      const dir = path.join(BACKUP_DIR, `pre-update-${stamp()}`);
+      fs.mkdirSync(path.join(dir, 'profiles'), { recursive: true });
+      if (fs.existsSync(PROFILES_FILE)) fs.copyFileSync(PROFILES_FILE, path.join(dir, 'profiles.json'));
+      for (const f of dataFiles) fs.copyFileSync(path.join(PROFILE_DATA_DIR, f), path.join(dir, 'profiles', f));
+      fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({ from: state.lastVersion || null, to: version, at: new Date().toISOString() }, null, 2));
+      prune((n) => n.startsWith('pre-update-'), UPDATE_SNAPSHOTS_TO_KEEP);
+    }
+    writeJsonAtomic(APP_STATE_FILE, { ...state, lastVersion: version });
+  } catch (err) {
+    // Leave lastVersion alone so the snapshot is tried again next launch.
+    console.error('Pre-update snapshot failed', err);
   }
 }
 
@@ -268,23 +329,126 @@ ipcMain.handle('profiles:remove', (_e, id) => {
 
 // ------------------------------------------------------------------------ data
 
-ipcMain.handle('data:load', (_e, id) => readJson(profileDataFile(id), null));
+// Profiles whose data file exists but couldn't be read. Saving to them is refused until a
+// backup is restored, so an unreadable file is never replaced with an empty profile.
+const unreadable = new Set();
+// Data version last read or written per profile. A save with an older version is refused,
+// so an older FieldLogger can't overwrite data a newer one saved.
+const fileVersion = new Map();
+
+ipcMain.handle('data:load', (_e, id) => {
+  try {
+    const data = readJsonStrict(profileDataFile(id));
+    unreadable.delete(id);
+    if (data === undefined) return null;
+    fileVersion.set(id, Number(data.version) || 1);
+    return data;
+  } catch (err) {
+    unreadable.add(id);
+    throw new Error(`${UNREADABLE}: ${err.message}`);
+  }
+});
+
+function checkSave(id, data) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.entries) || !Array.isArray(data.clients)) {
+    throw new Error('Refusing to save data that is missing its clients or entries.');
+  }
+  if (unreadable.has(id)) throw new Error(`${UNREADABLE}: restore a backup before saving.`);
+  const incoming = Number(data.version) || 1;
+  if (incoming < (fileVersion.get(id) || 0)) {
+    throw new Error('This data was saved by a newer version of FieldLogger. Install the latest version to keep editing.');
+  }
+}
+
+// Before each save, keep the version it replaces as "<id>-previous.json".
+function keepPrevious(id) {
+  const file = profileDataFile(id);
+  if (!fs.existsSync(file)) return;
+  try {
+    fs.copyFileSync(file, path.join(BACKUP_DIR, `${safeId(id)}-previous.json`));
+  } catch (err) {
+    console.error('Keeping the previous save failed', err);
+  }
+}
+
+function saveProfileData(id, data) {
+  checkSave(id, data);
+  dailyBackup(id);
+  keepPrevious(id);
+  writeJsonAtomic(profileDataFile(id), data);
+  fileVersion.set(id, Number(data.version) || 1);
+}
 
 ipcMain.handle('data:save', (_e, id, data) => {
-  dailyBackup(id);
-  writeJsonAtomic(profileDataFile(id), data);
+  saveProfileData(id, data);
   return true;
 });
 
 // Used on window close so the last edit is never lost.
 ipcMain.on('data:saveSync', (e, id, data) => {
   try {
-    writeJsonAtomic(profileDataFile(id), data);
+    saveProfileData(id, data);
     e.returnValue = true;
   } catch (err) {
     console.error(err);
     e.returnValue = false;
   }
+});
+
+// ---------------------------------------------------------------------- backups
+
+// Every restorable copy of one profile's data, newest first. `key` is the path inside
+// BACKUP_DIR; restore only accepts keys this function returns.
+function listBackups(id) {
+  const sid = safeId(id);
+  const found = [];
+  const add = (key, kind, label, at) => {
+    try {
+      const data = JSON.parse(fs.readFileSync(path.join(BACKUP_DIR, key), 'utf8'));
+      if (!data || !Array.isArray(data.entries) || !Array.isArray(data.clients)) return;
+      found.push({ key, kind, label, at, clients: data.clients.length, entries: data.entries.length, version: Number(data.version) || 1 });
+    } catch { /* unreadable copies aren't offered */ }
+  };
+  const mtime = (key) => fs.statSync(path.join(BACKUP_DIR, key)).mtime.toISOString();
+  for (const name of fs.readdirSync(BACKUP_DIR)) {
+    if (name === `${sid}-previous.json`) add(name, 'previous', 'Before the last save', mtime(name));
+    else if (name.startsWith(`${sid}-before-restore-`) && name.endsWith('.json')) add(name, 'restore', 'Before a restore', mtime(name));
+    else if (new RegExp(`^${sid}-\\d{4}-\\d{2}-\\d{2}\\.json$`).test(name)) add(name, 'daily', 'Daily copy', mtime(name));
+    else if (name.startsWith('pre-update-')) {
+      const key = `${name}/profiles/${sid}.json`;
+      if (!fs.existsSync(path.join(BACKUP_DIR, key))) continue;
+      const meta = readJson(path.join(BACKUP_DIR, name, 'meta.json'), {});
+      const label = meta.from ? `Before updating ${meta.from} → ${meta.to}` : `Before updating to ${meta.to || 'a new version'}`;
+      add(key, 'update', label, meta.at || mtime(key));
+    }
+  }
+  return found.sort((a, b) => b.at.localeCompare(a.at));
+}
+
+ipcMain.handle('backups:list', (_e, id) => listBackups(id));
+
+// Restores a backup over the profile's data. The current file is kept first: as a
+// "before restore" copy if it's readable, or set aside as "unreadable" if it isn't.
+ipcMain.handle('backups:restore', (_e, id, key) => {
+  const entry = listBackups(id).find((b) => b.key === key);
+  if (!entry) throw new Error('That backup is no longer available.');
+  const data = JSON.parse(fs.readFileSync(path.join(BACKUP_DIR, entry.key), 'utf8'));
+  const file = profileDataFile(id);
+  const sid = safeId(id);
+  if (fs.existsSync(file)) {
+    let readable = true;
+    try { readJsonStrict(file); } catch { readable = false; }
+    if (readable) {
+      fs.copyFileSync(file, path.join(BACKUP_DIR, `${sid}-before-restore-${stamp()}.json`));
+      prune((n) => n.startsWith(`${sid}-before-restore-`), RESTORE_COPIES_TO_KEEP);
+    } else {
+      fs.renameSync(file, path.join(BACKUP_DIR, `${sid}-unreadable-${stamp()}.json`));
+    }
+  }
+  writeJsonAtomic(file, data);
+  unreadable.delete(id);
+  fileVersion.set(id, Number(data.version) || 1);
+  return true;
 });
 
 ipcMain.handle('data:export', async (e, data, suggestedName) => {
@@ -485,10 +649,27 @@ function runSelfTest(win) {
       await api.profiles.remove(q.id);
       await api.profiles.remove(p.id);
       out.removed = (await api.profiles.list()).profiles.length === 0;
+      // Data safety: an unreadable file is never overwritten, and a backup restores it.
+      const bad = 'pcorrupt01';
+      out.unreadableLoadRefused = await api.data.load(bad).then(() => false, (e) => String(e.message).includes('${UNREADABLE}'));
+      out.unreadableSaveRefused = await api.data.save(bad, { ...data, profileId: bad }).then(() => false, () => true);
+      const daily = (await api.backups.list(bad)).find((b) => b.kind === 'daily');
+      out.backupListed = Boolean(daily) && daily.clients === 1;
+      out.restored = daily ? (await api.backups.restore(bad, daily.key)) === true && (await api.data.load(bad)).clients[0].name === 'Kept' : false;
+      await api.data.save(bad, { ...data, profileId: bad, version: 99 });
+      out.previousKept = (await api.backups.list(bad)).some((b) => b.kind === 'previous' && b.clients === 1);
+      out.downgradeRefused = await api.data.save(bad, { ...data, profileId: bad, version: 1 }).then(() => false, () => true);
+      out.emptySaveRefused = await api.data.save(bad, { version: 99 }).then(() => false, () => true);
+      await api.profiles.remove(bad);
       return out;
     })()`;
     try {
+      // A half-written data file plus a good daily copy of it, for the data-safety checks.
+      fs.writeFileSync(profileDataFile('pcorrupt01'), '{"clients": [', 'utf8');
+      writeJsonAtomic(path.join(BACKUP_DIR, 'pcorrupt01-2026-01-01.json'),
+        { version: 1, profileId: 'pcorrupt01', settings: {}, actionTypes: [], clients: [{ id: 'c1', name: 'Kept' }], entries: [], timer: null });
       const result = await win.webContents.executeJavaScript(script);
+      result.unreadableFileKept = fs.readdirSync(BACKUP_DIR).some((f) => f.startsWith('pcorrupt01-unreadable-'));
       const pass = Object.values(result).every(Boolean);
       console.log(`SELFTEST ${pass ? 'PASS' : 'FAIL'} ${JSON.stringify(result)}`);
       const backups = fs.readdirSync(BACKUP_DIR);
@@ -512,6 +693,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
+    snapshotBeforeUpdate();
     createWindow();
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
