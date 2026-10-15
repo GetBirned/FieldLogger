@@ -8,7 +8,8 @@ import { processPhoto } from '../lib/image.js';
 import { bridge, isElectron } from '../lib/bridge.js';
 import { ACCENTS, BRAND_PALETTES, ACTION_ICONS, NOTE_TOKENS, DEFAULT_TEMPLATE, PALETTE, APP_NAME, uid } from '../lib/defaults.js';
 import { renderLine } from '../lib/notes.js';
-import { fmtHourLabel } from '../lib/time.js';
+import { fmtHourLabel, fmtDateLong, parseKey } from '../lib/time.js';
+import { CHANGELOG, LATEST_VERSION } from '../lib/changelog.js';
 import { Avatar, Button, ColorPicker, Field, Icon, IconButton, ImageDrop, Kbd, Modal, Segmented, Switch, TypeBadge, cx, usePasteImage } from './ui.js';
 import { LogoMark, Wordmark } from './Logo.js';
 
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'calendar', label: 'Calendar', icon: 'calendar-days' },
   { id: 'profile', label: 'Profile & PIN', icon: 'user-round' },
   { id: 'data', label: 'Data & backup', icon: 'database' },
+  { id: 'updates', label: 'Update log', icon: 'history' },
   { id: 'about', label: 'Shortcuts & about', icon: 'keyboard' },
 ];
 
@@ -39,6 +41,7 @@ export function SettingsView() {
       ${tab === 'calendar' && html`<${CalendarSettings} s=${data.settings} />`}
       ${tab === 'profile' && html`<${ProfileSettings} profile=${profile} />`}
       ${tab === 'data' && html`<${DataSettings} data=${data} profile=${profile} />`}
+      ${tab === 'updates' && html`<${UpdateLog} />`}
       ${tab === 'about' && html`<${About} />`}
     </div>
   </div>`;
@@ -486,11 +489,46 @@ function DataSettings({ data, profile }) {
   `;
 }
 
+// ------------------------------------------------------------------ update log
+
+// The packaged app reports package.json's version; the browser preview has none, so use the newest log entry.
+function useAppVersion() {
+  const [info, setInfo] = useState(null);
+  useEffect(() => { bridge.app.info().then(setInfo); }, []);
+  return !info?.version || info.version === 'preview' ? LATEST_VERSION : info.version;
+}
+
+const KIND = {
+  new: { label: 'New', cls: 'badge-accent' },
+  improved: { label: 'Improved', cls: 'badge-muted' },
+  fixed: { label: 'Fixed', cls: 'badge-ok' },
+};
+
+function UpdateLog() {
+  const version = useAppVersion();
+  return html`
+    <${Section} title="Update log" desc=${`You're on version ${version}. Here's what changed in each release.`}>
+      <div class="changelog">
+        ${CHANGELOG.map((r) => html`<article class=${cx('release', r.version === version && 'is-current')}>
+          <header class="release-head">
+            <span class="release-version">v${r.version}</span>
+            ${r.version === version && html`<span class="badge badge-live">Installed</span>`}
+            <span class="release-title">${r.title}</span>
+            <span class="release-date muted">${fmtDateLong(parseKey(r.date))}</span>
+          </header>
+          <ul class="release-items">
+            ${r.items.map((it) => html`<li><span class=${cx('badge', KIND[it.kind]?.cls)}>${KIND[it.kind]?.label || it.kind}</span><span>${it.text}</span></li>`)}
+          </ul>
+        </article>`)}
+      </div>
+    <//>
+  `;
+}
+
 // ----------------------------------------------------------------------- about
 
 function About() {
-  const [info, setInfo] = useState(null);
-  useEffect(() => { bridge.app.info().then(setInfo); }, []);
+  const version = useAppVersion();
   const keys = [
     [['Ctrl', 'L'], 'Log Action'],
     [['Ctrl', 'Enter'], 'Save in a dialog'],
@@ -512,7 +550,8 @@ function About() {
         <${LogoMark} size=${64} />
         <div>
           <${Wordmark} size=${26} />
-          <p class="muted">Version ${info?.version || '1.0.0'} · Built for implementation consultants who live in Kantata.</p>
+          <p class="muted">Version ${version} · Built for implementation consultants who live in Kantata.</p>
+          <button type="button" class="link-btn" onClick=${() => setUi({ settingsTab: 'updates' })}><${Icon} name="history" size=${14} /> See what's new</button>
         </div>
       </div>
     <//>

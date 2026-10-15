@@ -2,7 +2,7 @@
 import { html, useEffect, useState, useRef } from '../lib/h.js';
 import { bridge } from '../lib/bridge.js';
 import { signIn, loadDemo } from '../lib/store.js';
-import { APP_TAGLINE, PALETTE } from '../lib/defaults.js';
+import { PALETTE } from '../lib/defaults.js';
 import { relativeTime } from '../lib/time.js';
 import { processPhoto } from '../lib/image.js';
 import { LogoMark, Wordmark } from './Logo.js';
@@ -47,7 +47,6 @@ export function ProfileGate() {
       <div class="gate-brand">
         <div class="gate-logo"><${LogoMark} size=${84} /></div>
         <${Wordmark} size=${40} />
-        <p class="gate-tagline">${APP_TAGLINE}</p>
       </div>
 
       ${mode === 'pick' && html`<div class="gate-card">

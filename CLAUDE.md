@@ -34,6 +34,8 @@ Fully offline: no server, no accounts. The full build conversation is kept local
 - Client logos and profile photos are resized locally (`src/lib/image.js`) and stored as data URLs.
 - Sign-in: no PIN → reopen straight into the last profile; PIN → straight to that profile's PIN screen
   (`pinOnLaunch`). Lock keeps the last profile; Switch profile forgets it.
+- Releases: every user-facing change bumps `version` in `package.json` (minor for features, patch for fixes)
+  and adds a matching entry at the top of `src/lib/changelog.js`, which Settings → Update log displays.
 - `signIn` registers the profile before writing data. `profiles:list` re-adopts unregistered data files as "Recovered profile".
 
 ## Verifying changes

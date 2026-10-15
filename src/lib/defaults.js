@@ -1,7 +1,6 @@
 // App-wide constants and the starting data for a new profile.
 
 export const APP_NAME = 'FieldLogger';
-export const APP_TAGLINE = 'Log it in the field. Paste it into Kantata.';
 export const DATA_VERSION = 1;
 
 export const ACCENTS = [
