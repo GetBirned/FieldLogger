@@ -221,7 +221,7 @@ export function addClient(fields) {
     active: true,
     color: '#3b82f6',
     kantataProject: '',
-    phase: 'Kickoff',
+    implementations: [],
     startDate: '',
     goLiveDate: '',
     website: '',
@@ -249,6 +249,35 @@ export function deleteClient(id) {
     entries: d.entries.map((e) => (e.clientId === id ? { ...e, clientId: null } : e)),
     timer: d.timer && d.timer.clientId === id ? { ...d.timer, clientId: null } : d.timer,
   }));
+}
+
+// ----------------------------------------------------------------- implementations
+// A client's implementations: { id, product, done: { [milestoneId]: ISO date }, complete, completedAt, createdAt }.
+
+export const newImplementation = (product) => ({ id: uid('i'), product, done: {}, complete: false, completedAt: null, createdAt: now() });
+
+function patchImplementations(clientId, fn) {
+  updateData((d) => ({
+    ...d,
+    clients: d.clients.map((c) => (c.id === clientId ? { ...c, implementations: fn(c.implementations || []), updatedAt: now() } : c)),
+  }));
+}
+
+export const addImplementation = (clientId, product) => patchImplementations(clientId, (list) => [...list, newImplementation(product)]);
+export const removeImplementation = (clientId, implId) => patchImplementations(clientId, (list) => list.filter((i) => i.id !== implId));
+
+export function toggleMilestone(clientId, implId, milestoneId) {
+  patchImplementations(clientId, (list) => list.map((i) => {
+    if (i.id !== implId) return i;
+    const done = { ...i.done };
+    if (done[milestoneId]) delete done[milestoneId];
+    else done[milestoneId] = now();
+    return { ...i, done };
+  }));
+}
+
+export function setImplementationComplete(clientId, implId, complete) {
+  patchImplementations(clientId, (list) => list.map((i) => (i.id === implId ? { ...i, complete, completedAt: complete ? now() : null } : i)));
 }
 
 export function saveContact(clientId, contact) {

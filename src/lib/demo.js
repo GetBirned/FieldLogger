@@ -1,6 +1,6 @@
 // Sample clients and entries for exploring the app. Everything created here is
 // tagged demo:true so Settings -> Data can remove it in one click.
-import { uid } from './defaults.js';
+import { uid, implementationDef } from './defaults.js';
 import { addDays } from './time.js';
 
 // Simple made-up marks so the sample data shows client logos.
@@ -13,7 +13,7 @@ const svgUrl = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s
 
 const CLIENTS = [
   {
-    name: 'Granite Ridge Paving', color: '#f97316', kantataProject: 'GRP - B2W Estimate & Track Implementation', phase: 'Configuration',
+    name: 'Granite Ridge Paving', color: '#f97316', kantataProject: 'GRP - B2W Estimate & Track Implementation', impls: [['estimate', 6], ['track', 3]],
     logo: DEMO_LOGOS.granite, engagement: 'https://example.com/engagements/granite-ridge',
     location: 'Boise, ID', erp: 'Vista', website: 'https://example.com', start: -34, golive: 41,
     notes: 'Estimating team of 6. Wants bid item templates mirrored from their old spreadsheets.\nPrimary pain point: equipment rate tables.',
@@ -23,7 +23,7 @@ const CLIENTS = [
     ],
   },
   {
-    name: 'Summit Civil Constructors', color: '#3b82f6', kantataProject: 'SCC - Schedule & Maintain Rollout', phase: 'Training',
+    name: 'Summit Civil Constructors', color: '#3b82f6', kantataProject: 'SCC - Schedule & Maintain Rollout', impls: [['schedule', 8], ['maintain', 5]],
     location: 'Denver, CO', erp: 'Spectrum', start: -61, golive: 12,
     notes: 'Field supervisors trained in two waves. Wave 2 scheduled after Thanksgiving.',
     contacts: [
@@ -32,21 +32,21 @@ const CLIENTS = [
     ],
   },
   {
-    name: 'Blue Mesa Excavation', color: '#10b981', kantataProject: 'BME - Track Implementation', phase: 'Data Setup',
+    name: 'Blue Mesa Excavation', color: '#10b981', kantataProject: 'BME - Track Implementation', impls: [['track', 4]],
     logo: DEMO_LOGOS.mesa, engagement: 'https://example.com/engagements/blue-mesa',
     location: 'Albuquerque, NM', erp: 'Sage 300', start: -12, golive: 70,
     notes: 'Needs cost code import from Viewpoint export. Waiting on final employee list.',
     contacts: [{ name: 'Rosa Delgado', role: 'Controller', email: 'rosa.d@example.com', phone: '(505) 555-0163', poc: true }],
   },
   {
-    name: 'Ironwood Aggregates', color: '#8b5cf6', kantataProject: 'IWA - Estimate Upgrade', phase: 'Kickoff',
+    name: 'Ironwood Aggregates', color: '#8b5cf6', kantataProject: 'IWA - Estimate Upgrade', impls: [['estimate', 1]],
     logo: DEMO_LOGOS.ironwood,
     location: 'Tulsa, OK', erp: 'Foundation', start: -3, golive: 95,
     notes: 'Sales handoff complete. Kickoff deck sent.',
     contacts: [{ name: 'Dale Hutchins', role: 'VP Construction', email: 'dhutchins@example.com', phone: '(918) 555-0131', poc: true }],
   },
   {
-    name: 'Cascade Earthworks', color: '#ec4899', kantataProject: 'CEW - B2W Suite', phase: 'Complete',
+    name: 'Cascade Earthworks', color: '#ec4899', kantataProject: 'CEW - B2W Suite', impls: [['estimate', 10, true], ['track', 10, true], ['employee', 10, true]],
     location: 'Tacoma, WA', erp: 'QuickBooks', start: -160, golive: -20, active: false,
     notes: 'Live since September. Handed off to support.',
     contacts: [{ name: 'Sam Whitaker', role: 'Project Controls', email: 'sam.w@example.com', phone: '(253) 555-0190', poc: true }],
@@ -79,6 +79,14 @@ function rng(seed) {
   };
 }
 
+// The first `count` milestones checked, a few days apart starting at the project start.
+function demoImplementation(product, count, complete, start) {
+  const day = (n) => new Date(Math.min(addDays(start, n).getTime(), Date.now())).toISOString(); // never in the future
+  const done = {};
+  implementationDef(product).milestones.slice(0, count).forEach((m, i) => { done[m.id] = day(2 + i * 3); });
+  return { id: uid('i'), product, done, complete: Boolean(complete), completedAt: complete ? day(2 + count * 3) : null, createdAt: start.toISOString() };
+}
+
 export function buildDemoData(actionTypes) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -90,7 +98,7 @@ export function buildDemoData(actionTypes) {
     active: c.active !== false,
     color: c.color,
     kantataProject: c.kantataProject,
-    phase: c.phase,
+    implementations: c.impls.map(([product, count, complete]) => demoImplementation(product, count, complete, addDays(today, c.start))),
     location: c.location || '',
     erp: c.erp || '',
     website: c.website || '',

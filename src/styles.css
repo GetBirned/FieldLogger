@@ -1198,12 +1198,6 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .cc-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .cc-name { font-family: var(--font-display); font-weight: 620; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cc-project { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cc-phase { display: flex; flex-direction: column; gap: 6px; }
-.cc-phase-label { font-size: 12px; font-weight: 620; color: var(--text-2); }
-.phase-bar { display: flex; gap: 3px; }
-.phase-bar span { flex: 1; height: 5px; border-radius: 99px; background: var(--surface-3); }
-.phase-bar span.is-done { background: color-mix(in oklab, var(--cc) 55%, transparent); }
-.phase-bar span.is-current { background: var(--cc); box-shadow: 0 0 8px color-mix(in oklab, var(--cc) 60%, transparent); }
 .cc-poc { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); min-width: 0; }
 .cc-poc .icon { color: var(--muted); }
 .cc-poc-name { font-weight: 600; white-space: nowrap; }
@@ -1226,17 +1220,6 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .hero-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; font-size: 13px; color: var(--muted); }
 .hero-meta span, .hero-meta a { display: inline-flex; align-items: center; gap: 6px; }
 .hero-actions { display: flex; align-items: center; gap: 8px; }
-.stepper { position: relative; display: flex; margin-top: 20px; }
-.step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; padding: 2px 0; }
-.step::before { content: ''; position: absolute; top: 14px; left: calc(-50% + 16px); right: calc(50% + 16px); height: 2px; background: var(--border); }
-.step:first-child::before { display: none; }
-.step.is-done::before, .step.is-current::before { background: var(--cc); }
-.step-dot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 2px solid var(--border-strong); color: var(--muted); background: var(--surface); transition: all 0.25s var(--ease-spring); }
-.step:hover .step-dot { border-color: var(--cc); transform: scale(1.08); }
-.step.is-done .step-dot { background: var(--cc); border-color: var(--cc); color: #fff; }
-.step.is-current .step-dot { border-color: var(--cc); color: var(--cc); box-shadow: 0 0 0 5px color-mix(in oklab, var(--cc) 18%, transparent); }
-.step-label { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-.step.is-current .step-label { color: var(--text); }
 
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
 .detail-main, .detail-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -1439,3 +1422,36 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .erp-plate { flex: none; display: inline-grid; place-items: center; }
 .erp-fallback { flex: none; display: inline-grid; place-items: center; border-radius: 6px; background: var(--surface-3); color: var(--muted); }
 .cc-erp { flex: none; display: inline-flex; }
+
+/* Implementations: card summary, client-page panels and milestone checklist. */
+.cc-impls { display: flex; flex-direction: column; gap: 6px; }
+.cc-impls-empty { font-size: 12px; color: var(--muted); }
+.cc-impl { display: grid; grid-template-columns: minmax(0, 1fr) 70px 32px; align-items: center; gap: 8px; font-size: 12px; }
+.cc-impl-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 620; color: var(--text-2); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc-impl-name .icon { color: var(--muted); flex: none; }
+.cc-impl-count { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cc-impl-done { grid-column: 2 / 4; justify-self: end; display: inline-flex; align-items: center; gap: 4px; font-weight: 620; color: color-mix(in oklab, var(--ok) 80%, var(--text)); }
+.cc-impl.is-complete .cc-impl-name { color: var(--muted); }
+.mini-bar { display: block; height: 5px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+.mini-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--cc, var(--accent-lift)); transition: width 0.35s var(--ease); }
+
+.impls { display: flex; flex-direction: column; gap: 10px; padding: 0 18px 18px; }
+.impl { border: 1px solid var(--border); border-radius: var(--r); background: var(--surface-2); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.impl.is-complete { padding-bottom: 10px; }
+.impl-head { display: flex; align-items: center; gap: 10px; }
+.impl-toggle { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; color: var(--muted); }
+.impl-icon { width: 32px; height: 32px; flex: none; border-radius: 9px; display: grid; place-items: center; background: color-mix(in oklab, var(--cc) 14%, transparent); color: var(--cc); }
+.impl.is-complete .impl-icon { background: color-mix(in oklab, var(--ok) 14%, transparent); color: var(--ok); }
+.impl-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.impl-name { font-weight: 700; font-size: 14px; color: var(--text); }
+.impl-delivery { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.impl-count { font-size: 12.5px; font-weight: 650; color: var(--text-2); font-variant-numeric: tabular-nums; }
+/* Two columns that read top-to-bottom, so the milestones stay in working order. */
+.milestones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 5), auto); grid-auto-flow: column; gap: 2px 12px; }
+.milestone { display: flex; align-items: center; gap: 10px; padding: 6px 6px; border-radius: 8px; text-align: left; font-size: 13px; color: var(--text-2); }
+.milestone:hover { background: var(--surface-3); }
+.milestone:hover .check { border-color: var(--ok); }
+.milestone.is-done .milestone-name { color: var(--muted); }
+.milestone-name { flex: 1; min-width: 0; }
+.milestone-date { font-size: 11.5px; color: var(--muted); flex: none; }
+@media (max-width: 760px) { .milestones { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; } }

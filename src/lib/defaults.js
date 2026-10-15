@@ -105,7 +105,38 @@ export const ERP_LOGOS = {
   ComputerEase: '../assets/erp/computerease.png',
 };
 
-export const PHASES = ['Sales Handoff', 'Kickoff', 'Data Setup', 'Configuration', 'Training', 'Go-Live', 'Complete'];
+// Kantata plan milestones. Kantata lists the same ten for each delivery element
+// in no particular order; here they run in the order the work usually happens.
+const MILESTONES = [
+  { id: 'sales-handoff', name: 'Sales to Consulting Handoff' },
+  { id: 'discovery', name: 'Discovery Call' },
+  { id: 'access', name: 'Confirmed Client Access' },
+  { id: 'data', name: 'Data Populated' },
+  { id: 'integration-setup', name: 'Integration Set up Completed' },
+  { id: 'walkthrough', name: 'System Walkthrough Completed' },
+  { id: 'integration-walkthrough', name: 'Integration Walkthrough Completed' },
+  { id: 'training-handoff', name: 'Training Handoff' },
+  { id: 'implementation-complete', name: 'Implementation Complete' },
+  { id: 'project-complete', name: 'Project Complete' },
+];
+
+// B2W products a client can be implementing. Each has its own milestone list so they can
+// diverge later; Schedule and Maintain use Track's outline for now.
+export const IMPLEMENTATIONS = [
+  { id: 'estimate', name: 'Estimate', icon: 'calculator', delivery: 'BS-SVC-B2WIMP-ESTPRO', milestones: MILESTONES },
+  { id: 'track', name: 'Track', icon: 'clipboard-list', delivery: 'BS-SVC-B2WIMP-TRK', milestones: MILESTONES },
+  { id: 'schedule', name: 'Schedule', icon: 'calendar-range', delivery: '', milestones: MILESTONES },
+  { id: 'maintain', name: 'Maintain', icon: 'wrench', delivery: '', milestones: MILESTONES },
+  { id: 'employee', name: 'Field Employee', icon: 'hard-hat', delivery: 'Professional Implementation and Training Services (B2W Employee App)', milestones: MILESTONES },
+];
+
+export const implementationDef = (product) => IMPLEMENTATIONS.find((p) => p.id === product) || IMPLEMENTATIONS[0];
+
+// How far along an implementation is: { done, total }.
+export function implementationProgress(impl) {
+  const { milestones } = implementationDef(impl.product);
+  return { done: milestones.filter((m) => impl.done?.[m.id]).length, total: milestones.length };
+}
 
 export const NOTE_TOKENS = [
   { token: '{time}', label: 'Time', hint: '2:15 PM or 2:00-3:00 PM' },
@@ -166,7 +197,7 @@ export function normalizeData(raw, profile) {
     version: DATA_VERSION,
     settings: { ...DEFAULT_SETTINGS, ...(raw.settings || {}) },
     actionTypes: Array.isArray(raw.actionTypes) && raw.actionTypes.length ? raw.actionTypes : base.actionTypes,
-    clients: Array.isArray(raw.clients) ? raw.clients.map((c) => ({ contacts: [], notes: '', active: true, ...c })) : [],
+    clients: Array.isArray(raw.clients) ? raw.clients.map((c) => ({ contacts: [], notes: '', active: true, implementations: [], ...c })) : [],
     entries: Array.isArray(raw.entries) ? raw.entries.filter((e) => e && e.start) : [],
     timer: raw.timer && raw.timer.start ? raw.timer : null,
   };

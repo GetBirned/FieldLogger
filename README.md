@@ -17,7 +17,7 @@ Everything stays on your computer. There's no server, no cloud and no sign-up.
 
 1. Run `FieldLogger-Setup-1.0.0.exe`.
 2. Windows may show **"Windows protected your PC"** because the app isn't
-   code-signed. Click **More info → Run anyway**.
+   code-signed. Click **More info â†’ Run anyway**.
 3. Pick an install folder (no admin rights needed). A **FieldLogger** shortcut
    is added to your desktop and Start menu.
 4. Create your profile. You just need a name; a PIN is optional.
@@ -32,15 +32,16 @@ Everything stays on your computer. There's no server, no cloud and no sign-up.
 | One-click logging | **Quick log** buttons in the calendar side panel |
 | Copy notes into Kantata | **Kantata Notes**: copy one line, a whole project, or the whole day |
 | Track what's been entered | Tick the checkbox per line, or leave **Check off on copy** on |
-| Clients, POCs, notes | **Clients**: add contacts (star one as POC), set the phase, write notes, mark active/inactive |
+| Clients, POCs, notes | **Clients**: add contacts (star one as POC), write notes, mark active/inactive |
+| Implementations | Pick Estimate, Track, Schedule, Maintain and/or Field Employee for a client, tick off each one's Kantata milestones on the client page, and **Mark complete** when it's done |
 | Client logos | Click (or drop an image on) the client's tile, or paste one with Ctrl+V in Edit client. The logo then shows in Log Action, on the calendar and in Kantata Notes |
 | Engagement link | Paste the client's Kantata / Salesforce DX engagement URL in **Edit client** to get an **Open engagement** button on the client page and in Kantata Notes |
-| Profile picture | **Settings → Profile & PIN**: click, drop or paste a photo |
+| Profile picture | **Settings â†’ Profile & PIN**: click, drop or paste a photo |
 | Staying signed in | FieldLogger reopens straight into your profile. With a PIN, it asks for the PIN on launch (turn that off in Settings). **Lock** keeps your profile selected; **Switch profile** returns to the picker |
-| Make it yours | **Settings → Appearance** for light/dark/system mode, the **Trimble** and **B2W** brand palettes, 12 accent colors or a custom one, the Trimble Gray dark mode, aurora glow and density |
-| Change the note format | **Settings → Kantata notes**. Tokens: `{time} {event} {notes} {client} {project} {duration} {hours} {date}` |
+| Make it yours | **Settings â†’ Appearance** for light/dark/system mode, the **Trimble** and **B2W** brand palettes, 12 accent colors or a custom one, the Trimble Gray dark mode, aurora glow and density |
+| Change the note format | **Settings â†’ Kantata notes**. Tokens: `{time} {event} {notes} {client} {project} {duration} {hours} {date}` |
 
-Shortcuts: `Ctrl+L` log · `Ctrl+1-4` switch pages · `T` today · `←/→` move · `D/W/M` day/week/month · `Esc` close · `Ctrl+Enter` save.
+Shortcuts: `Ctrl+L` log Â· `Ctrl+1-4` switch pages Â· `T` today Â· `â†/â†’` move Â· `D/W/M` day/week/month Â· `Esc` close Â· `Ctrl+Enter` save.
 
 ## Where data lives
 
@@ -50,7 +51,7 @@ Shortcuts: `Ctrl+L` log · `Ctrl+1-4` switch pages · `T` today · `←/→` mov
 - `profiles\<id>.json`: one file per profile with clients, entries and settings
 - `backups\`: an automatic daily snapshot of each profile (last 14 days), plus any deleted profiles
 
-Use **Settings → Data & backup** to export or import a `.json` backup (for
+Use **Settings â†’ Data & backup** to export or import a `.json` backup (for
 example, when moving to a new laptop). The PIN is a lock screen, not
 encryption, so don't store passwords in client notes.
 

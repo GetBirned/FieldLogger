@@ -2,8 +2,9 @@
 import { html, useEffect, useMemo, useRef, useState } from '../lib/h.js';
 import {
   useSession, useUi, setUi, addClient, updateClient, deleteClient, saveContact, deleteContact, openLog, openEdit, confirmDialog, toast, copyText,
+  addImplementation, removeImplementation, toggleMilestone, setImplementationComplete, newImplementation,
 } from '../lib/store.js';
-import { ERP_LOGOS, ERP_SYSTEMS, PALETTE, PHASES } from '../lib/defaults.js';
+import { ERP_LOGOS, ERP_SYSTEMS, IMPLEMENTATIONS, PALETTE, implementationDef, implementationProgress } from '../lib/defaults.js';
 import { dateKey, todayKey, parseKey, addDays, startOfWeek, fmtHours, fmtDateLong, fmtDateShort, relativeTime } from '../lib/time.js';
 import { entryMinutes, entryTimeText, renderLine, totalMinutes } from '../lib/notes.js';
 import { processLogo, chooseImage } from '../lib/image.js';
@@ -54,7 +55,7 @@ function ClientList({ data }) {
     .filter((c) => {
       const ql = q.trim().toLowerCase();
       if (!ql) return true;
-      return [c.name, c.kantataProject, c.location, c.erp, ...(c.contacts || []).map((k) => `${k.name} ${k.email}`)].join(' ').toLowerCase().includes(ql);
+      return [c.name, c.kantataProject, c.location, c.erp, ...(c.implementations || []).map((i) => implementationDef(i.product).name), ...(c.contacts || []).map((k) => `${k.name} ${k.email}`)].join(' ').toLowerCase().includes(ql);
     })
     .sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name) : (stats[b.id]?.last || 0) - (stats[a.id]?.last || 0) || a.name.localeCompare(b.name)));
 
@@ -98,10 +99,24 @@ function Sparkline({ values, color }) {
   </div>`;
 }
 
-function PhaseBar({ phase }) {
-  const idx = Math.max(0, PHASES.indexOf(phase));
-  return html`<div class="phase-bar" title=${phase}>
-    ${PHASES.map((p, i) => html`<span class=${cx(i <= idx && 'is-done', i === idx && 'is-current')}></span>`)}
+function ProgressBar({ done, total }) {
+  return html`<span class="mini-bar"><span style=${{ width: `${total ? (done / total) * 100 : 0}%` }}></span></span>`;
+}
+
+// One line per implementation on the client card: name, progress, or a Complete tick.
+function CardImplementations({ list }) {
+  if (!list.length) return html`<div class="cc-impls"><span class="cc-impls-empty">No implementations yet</span></div>`;
+  return html`<div class="cc-impls">
+    ${list.map((i) => {
+      const def = implementationDef(i.product);
+      const p = implementationProgress(i);
+      return html`<div class=${cx('cc-impl', i.complete && 'is-complete')}>
+        <span class="cc-impl-name"><${Icon} name=${def.icon} size=${13} />${def.name}</span>
+        ${i.complete
+          ? html`<span class="cc-impl-done"><${Icon} name="check" size=${12} stroke=${3} /> Complete</span>`
+          : html`<${ProgressBar} done=${p.done} total=${p.total} /><span class="cc-impl-count">${p.done}/${p.total}</span>`}
+      </div>`;
+    })}
   </div>`;
 }
 
@@ -118,10 +133,7 @@ function ClientCard({ client: c, stats, index }) {
       ${c.erp && html`<span class="cc-erp" data-tip=${c.erp}><${ErpLogo} erp=${c.erp} logos=${ERP_LOGOS} size=${28} /></span>`}
       ${!c.active && html`<span class="badge badge-muted">Inactive</span>`}
     </div>
-    <div class="cc-phase">
-      <span class="cc-phase-label">${c.phase || 'Kickoff'}</span>
-      <${PhaseBar} phase=${c.phase} />
-    </div>
+    <${CardImplementations} list=${c.implementations || []} />
     <div class="cc-poc">
       ${poc
         ? html`<${Icon} name="user-round" size=${14} /><span class="cc-poc-name">${poc.name}</span>${poc.role && html`<span class="muted">· ${poc.role}</span>`}`
@@ -228,11 +240,11 @@ function ClientDetail({ client: c, data }) {
           ]} />
         </div>
       </div>
-      <${PhaseStepper} phase=${c.phase} onChange=${(p) => updateClient(c.id, { phase: p })} />
     </div>
 
     <div class="detail-grid">
       <div class="detail-main">
+        <${ImplementationsCard} client=${c} />
         <div class="stat-tiles">
           <div class="stat-tile"><span class="eyebrow">This week</span><b>${fmtHours((stats?.week || 0) / 60)}<small>h</small></b></div>
           <div class="stat-tile"><span class="eyebrow">This month</span><b>${fmtHours(monthMinutes / 60)}<small>h</small></b></div>
@@ -304,14 +316,82 @@ function ClientDetail({ client: c, data }) {
   </div>`;
 }
 
-function PhaseStepper({ phase, onChange }) {
-  const idx = Math.max(0, PHASES.indexOf(phase));
-  return html`<div class="stepper">
-    ${PHASES.map((p, i) => html`<button type="button" class=${cx('step', i < idx && 'is-done', i === idx && 'is-current')} onClick=${() => onChange(p)} data-tip=${`Set phase: ${p}`}>
-      <span class="step-dot">${i < idx ? html`<${Icon} name="check" size=${12} stroke=${3} />` : i + 1}</span>
-      <span class="step-label">${p}</span>
-    </button>`)}
+// The client's implementations (Estimate, Track, …), each with its Kantata milestone checklist.
+function ImplementationsCard({ client: c }) {
+  const list = c.implementations || [];
+  // One in-progress implementation per product; a finished one can be started again.
+  const inProgress = new Set(list.filter((i) => !i.complete).map((i) => i.product));
+  const addable = IMPLEMENTATIONS.filter((p) => !inProgress.has(p.id));
+  const add = (p) => {
+    addImplementation(c.id, p.id);
+    toast(`Added ${p.name} implementation`, { icon: p.icon });
+  };
+  return html`<div class="card">
+    <div class="card-head">
+      <h3><${Icon} name="list-checks" size=${17} /> Implementations</h3>
+      ${addable.length > 0 && html`<${Menu} trigger=${({ toggle }) => html`<${Button} size="sm" variant="ghost" icon="plus" onClick=${toggle}>Add<//>`}
+        items=${addable.map((p) => ({ label: p.name, icon: p.icon, run: () => add(p) }))} />`}
+    </div>
+    ${list.length === 0
+      ? html`<p class="card-empty">Add the products ${c.name} is implementing (Estimate, Track, Schedule, Maintain, Field Employee) to track their Kantata milestones.</p>`
+      : html`<div class="impls">
+          ${list.map((i) => html`<${ImplementationPanel} key=${i.id} client=${c} impl=${i} />`)}
+        </div>`}
   </div>`;
+}
+
+function ImplementationPanel({ client: c, impl }) {
+  const def = implementationDef(impl.product);
+  const p = implementationProgress(impl);
+  const [open, setOpen] = useState(!impl.complete);
+  useEffect(() => { setOpen(!impl.complete); }, [impl.complete]);
+  const allDone = p.done === p.total;
+
+  const complete = () => {
+    setImplementationComplete(c.id, impl.id, true);
+    toast(`${def.name} implementation marked complete`, { icon: 'party-popper' });
+  };
+  const remove = async () => {
+    const ok = await confirmDialog({
+      title: `Remove the ${def.name} implementation?`,
+      message: p.done ? `Its ${p.done} checked ${p.done === 1 ? 'milestone' : 'milestones'} will be cleared. Your logged entries are not affected.` : 'Your logged entries are not affected.',
+      confirmLabel: 'Remove',
+      danger: true,
+    });
+    if (ok) removeImplementation(c.id, impl.id);
+  };
+
+  return html`<section class=${cx('impl', impl.complete && 'is-complete')}>
+    <header class="impl-head">
+      <button type="button" class="impl-toggle" onClick=${() => setOpen(!open)} aria-expanded=${open}>
+        <span class="impl-icon"><${Icon} name=${def.icon} size=${16} /></span>
+        <span class="impl-titles">
+          <span class="impl-name">${def.name}</span>
+          ${def.delivery && html`<span class="impl-delivery">${def.delivery}</span>`}
+        </span>
+        <${Icon} name=${open ? 'chevron-up' : 'chevron-down'} size=${16} />
+      </button>
+      ${impl.complete
+        ? html`<span class="badge badge-ok"><${Icon} name="check" size=${11} stroke=${3} /> Complete ${impl.completedAt ? fmtDateShort(new Date(impl.completedAt)) : ''}</span>`
+        : html`<span class="impl-count">${p.done}/${p.total}</span>
+            <${Button} size="sm" variant=${allDone ? 'primary' : 'ghost'} icon="circle-check" onClick=${complete}>Mark complete<//>`}
+      <${Menu} trigger=${({ toggle }) => html`<${IconButton} icon="ellipsis" label="More" size=${16} onClick=${toggle} />`} items=${[
+        impl.complete && { label: 'Reopen', icon: 'rotate-ccw', run: () => setImplementationComplete(c.id, impl.id, false) },
+        { label: 'Remove implementation', icon: 'trash-2', danger: true, run: remove },
+      ]} />
+    </header>
+    ${!impl.complete && html`<${ProgressBar} done=${p.done} total=${p.total} />`}
+    ${open && html`<div class="milestones" style=${{ '--rows': Math.ceil(def.milestones.length / 2) }}>
+      ${def.milestones.map((m) => {
+        const at = impl.done?.[m.id];
+        return html`<button type="button" class=${cx('milestone', at && 'is-done')} onClick=${() => toggleMilestone(c.id, impl.id, m.id)}>
+          <span class=${cx('check', at && 'is-on')}><${Icon} name="check" size=${13} stroke=${3} /></span>
+          <span class="milestone-name">${m.name}</span>
+          ${at && html`<span class="milestone-date">${fmtDateShort(new Date(at))}</span>`}
+        </button>`;
+      })}
+    </div>`}
+  </section>`;
 }
 
 // Free-form notes that save as you type.
@@ -359,7 +439,7 @@ export function ClientForm({ client, onClose, count = 0 }) {
     kantataProject: client?.kantataProject || '',
     color: client?.color || PALETTE[count % PALETTE.length],
     active: client ? client.active : true,
-    phase: client?.phase || 'Kickoff',
+    products: [...new Set((client?.implementations || []).map((i) => i.product))],
     startDate: client?.startDate || '',
     goLiveDate: client?.goLiveDate || '',
     location: client?.location || '',
@@ -388,11 +468,36 @@ export function ClientForm({ client, onClose, count = 0 }) {
   };
   usePasteImage(pickLogo);
 
-  const save = () => {
+  const toggleProduct = (id) => setF((prev) => ({
+    ...prev,
+    products: prev.products.includes(id) ? prev.products.filter((x) => x !== id) : [...prev.products, id],
+  }));
+
+  const save = async () => {
     if (!f.name.trim()) return setError('Give the client a name.');
     const engagementUrl = normalizeUrl(f.engagementUrl);
     if (engagementUrl === null) return setUrlError('That doesn’t look like a web link. Paste the full address from your browser.');
-    const fields = { ...f, name: f.name.trim(), kantataProject: f.kantataProject.trim(), erp: f.erp.trim(), website: normalizeUrl(f.website) || '', engagementUrl };
+    // Keep implementations whose product is still picked, add the newly picked ones.
+    const existing = client?.implementations || [];
+    const dropped = existing.filter((i) => !f.products.includes(i.product));
+    const withProgress = dropped.filter((i) => implementationProgress(i).done > 0);
+    if (withProgress.length) {
+      const names = [...new Set(withProgress.map((i) => implementationDef(i.product).name))].join(' and ');
+      const ok = await confirmDialog({
+        title: `Remove ${names}?`,
+        message: `Checked milestones for ${names} will be cleared. Your logged entries are not affected.`,
+        confirmLabel: 'Remove',
+        danger: true,
+      });
+      if (!ok) return undefined;
+    }
+    const kept = existing.filter((i) => f.products.includes(i.product));
+    const added = f.products.filter((p) => !kept.some((i) => i.product === p)).map(newImplementation);
+    const { products, ...rest } = f;
+    const fields = {
+      ...rest, implementations: [...kept, ...added],
+      name: f.name.trim(), kantataProject: f.kantataProject.trim(), erp: f.erp.trim(), website: normalizeUrl(f.website) || '', engagementUrl,
+    };
     if (client) {
       updateClient(client.id, fields);
       toast('Client saved', { icon: 'circle-check' });
@@ -433,10 +538,14 @@ export function ClientForm({ client, onClose, count = 0 }) {
           <input class="input" value=${f.engagementUrl} onInput=${(e) => { set('engagementUrl')(e); setUrlError(''); }} placeholder="https://yourcompany.lightning.force.com/…" spellcheck=${false} />
         </div>
       <//>
+      <${Field} label="Implementations" group hint="Pick every product you're implementing for this client. You can add more later from the client page.">
+        <div class="chips">
+          ${IMPLEMENTATIONS.map((p) => html`<button type="button" class=${cx('chip', f.products.includes(p.id) && 'is-active')} aria-pressed=${f.products.includes(p.id)} onClick=${() => toggleProduct(p.id)}>
+            <${Icon} name=${f.products.includes(p.id) ? 'check' : p.icon} size=${14} />${p.name}
+          </button>`)}
+        </div>
+      <//>
       <div class="form-grid">
-        <${Field} label="Phase">
-          <select class="input" value=${f.phase} onChange=${set('phase')}>${PHASES.map((p) => html`<option value=${p}>${p}</option>`)}</select>
-        <//>
         <${Field} label="Accounting / ERP">
           <div class="erp-select">
           ${f.erp && html`<${ErpLogo} erp=${f.erp} logos=${ERP_LOGOS} size=${36} />`}
@@ -453,11 +562,11 @@ export function ClientForm({ client, onClose, count = 0 }) {
           </div>
           ${erpOther && html`<input class="input erp-other" value=${f.erp} onInput=${set('erp')} placeholder="System name, e.g. Acumatica" ref=${erpOtherRef} />`}
         <//>
+        <${Field} label="Location"><input class="input" value=${f.location} onInput=${set('location')} placeholder="City, State" /><//>
         <${Field} label="Project start"><input class="input" type="date" value=${f.startDate} onInput=${set('startDate')} /><//>
         <${Field} label="Target go-live"><input class="input" type="date" value=${f.goLiveDate} onInput=${set('goLiveDate')} /><//>
-        <${Field} label="Location"><input class="input" value=${f.location} onInput=${set('location')} placeholder="City, State" /><//>
-        <${Field} label="Website"><input class="input" value=${f.website} onInput=${set('website')} placeholder="example.com" /><//>
       </div>
+      <${Field} label="Website"><input class="input" value=${f.website} onInput=${set('website')} placeholder="example.com" /><//>
       <${Field} label="Color" group><${ColorPicker} value=${f.color} onChange=${(v) => setF({ ...f, color: v })} /><//>
       <${Switch} checked=${f.active} onChange=${(v) => setF({ ...f, active: v })} label="Active project" hint="Inactive clients are hidden from the Log Action picker but keep all their history." />
     </div>

@@ -4,6 +4,17 @@
 
 export const CHANGELOG = [
   {
+    version: '1.3.0',
+    date: '2026-10-14',
+    title: 'Implementations and Kantata milestones',
+    items: [
+      { kind: 'new', text: 'Mark which products a client is implementing: Estimate, Track, Schedule, Maintain and Field Employee. Pick as many as you need, and add more later from the client page.' },
+      { kind: 'new', text: 'Each implementation has its Kantata plan milestones as a checklist. Ticking one records the date.' },
+      { kind: 'new', text: 'Mark an implementation complete (and reopen it if needed). Client cards show each implementation’s progress.' },
+      { kind: 'improved', text: 'Implementations replace the old single phase stepper.' },
+    ],
+  },
+  {
     version: '1.2.0',
     date: '2026-10-14',
     title: 'ERP logos',
