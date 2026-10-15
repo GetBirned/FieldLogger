@@ -12,7 +12,7 @@ export const CHANGELOG = [
       { kind: 'new', text: 'Each implementation has its Kantata plan milestones as a checklist. Ticking one records the date.' },
       { kind: 'new', text: 'Mark an implementation complete (and reopen it if needed). Client cards show each implementation’s progress.' },
       { kind: 'improved', text: 'Implementations replace the old single phase stepper.' },
-      { kind: 'new', text: 'Customer code for each client (like WARD). It shows next to the client name, is searchable, copies in one click, and can go in Kantata notes with {code}.' },
+      { kind: 'new', text: 'Customer code for each client (like WARD). It shows next to the name on the client page, is searchable, copies in one click, and can go in Kantata notes with {code}.' },
       { kind: 'improved', text: 'Signing in with a PIN unlocks as soon as you type the right PIN. No need to press Unlock.' },
     ],
   },

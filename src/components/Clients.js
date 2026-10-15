@@ -127,7 +127,7 @@ function ClientCard({ client: c, stats, index }) {
     <div class="cc-top">
       <${ClientAvatar} client=${c} size=${44} />
       <div class="cc-titles">
-        <span class="cc-name-row"><span class="cc-name">${c.name}</span>${c.customerCode && html`<span class="code-tag">${c.customerCode}</span>`}</span>
+        <span class="cc-name">${c.name}</span>
         <span class="cc-project">${c.kantataProject || 'No Kantata project set'}</span>
       </div>
       ${c.erp && html`<span class="cc-erp" data-tip=${c.erp}><${ErpLogo} erp=${c.erp} logos=${ERP_LOGOS} size=${28} /></span>`}
