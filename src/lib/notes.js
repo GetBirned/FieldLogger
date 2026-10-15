@@ -1,6 +1,12 @@
 // Turns logged entries into Kantata-ready note lines and CSV exports.
 import { fmtTime, fmtRange, fmtDuration, roundHours, fmtHours, fmtDateNumeric, dateKey } from './time.js';
-import { DEFAULT_TEMPLATE } from './defaults.js';
+import { DEFAULT_TEMPLATE, implementationDef } from './defaults.js';
+
+// The implementation (Estimate, Track, …) an entry was logged against, if it still exists.
+export function entryImplementation(entry, client) {
+  const impl = entry.implementationId && (client?.implementations || []).find((i) => i.id === entry.implementationId);
+  return impl ? { impl, def: implementationDef(impl.product) } : null;
+}
 
 export const entryMinutes = (e) => (e.end ? Math.max(0, (new Date(e.end) - new Date(e.start)) / 60000) : Number(e.minutes) || 0);
 
@@ -18,6 +24,7 @@ export function renderLine(entry, { type, client, settings }) {
     client: client?.name || 'Internal',
     project: client?.kantataProject || client?.name || 'Internal',
     code: client?.customerCode || '',
+    implementation: entryImplementation(entry, client)?.def.name || '',
     duration: minutes ? fmtDuration(minutes) : '',
     hours: minutes ? fmtHours(roundHours(minutes, settings?.roundTo, settings?.roundMode)) : '',
     date: fmtDateNumeric(entry.start),
@@ -46,7 +53,7 @@ const csvCell = (v) => {
 };
 
 export function entriesToCsv(entries, { typeById, clientById, settings }) {
-  const header = ['Date', 'Start', 'End', 'Client', 'Kantata Project', 'Action', 'Hours', 'Minutes', 'Notes', 'Kantata Note', 'Entered in Kantata'];
+  const header = ['Date', 'Start', 'End', 'Client', 'Project', 'Action', 'Hours', 'Minutes', 'Notes', 'Note line', 'Entered'];
   const rows = entries
     .slice()
     .sort((a, b) => new Date(a.start) - new Date(b.start))

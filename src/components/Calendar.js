@@ -302,7 +302,7 @@ function EventBlock({ item, top, height, data, typeById, clientById, narrow }) {
       <span class="ev-title">${type?.name || 'Action'}</span>
       ${!narrow && clientLabel}
       ${!narrow && mins > 0 && html`<span class="ev-dur">${fmtDuration(mins)}</span>`}
-      ${e.entered && html`<span class="ev-check" title="Entered in Kantata"><${Icon} name="check" size=${11} stroke=${3} /></span>`}
+      ${e.entered && html`<span class="ev-check" title="Entered"><${Icon} name="check" size=${11} stroke=${3} /></span>`}
     </button>`;
   }
 
@@ -316,7 +316,7 @@ function EventBlock({ item, top, height, data, typeById, clientById, narrow }) {
       <span class="ev-title">${type?.name || 'Action'}</span>
       ${compact && !narrow && clientLabel}
       ${wide && html`<span class="ev-time ev-time-end">${timeText} · ${fmtDuration(mins)}</span>`}
-      ${e.entered && html`<span class="ev-check" title="Entered in Kantata"><${Icon} name="check" size=${11} stroke=${3} /></span>`}
+      ${e.entered && html`<span class="ev-check" title="Entered"><${Icon} name="check" size=${11} stroke=${3} /></span>`}
     </div>
     ${!compact && clientLabel}
     ${!compact && !wide && height >= 56 && html`<div class="ev-time">${timeText}</div>`}
@@ -410,7 +410,7 @@ function SidePanel({ view, date, data, typeById, clientById }) {
       <div class="stat-row">
         <div class="stat-big">${fmtHours(minutes / 60)}<small>h</small></div>
         <div class="stat-side">
-          <span class="stat-pill" data-tip="Entries marked as entered in Kantata"><${Icon} name="clipboard-check" size=${13} /> ${entered}/${entries.length} entered</span>
+          <span class="stat-pill" data-tip="Entries marked as entered"><${Icon} name="clipboard-check" size=${13} /> ${entered}/${entries.length} entered</span>
         </div>
       </div>
       ${byClient.length > 0 && html`<div class="stack-bar">
@@ -424,7 +424,7 @@ function SidePanel({ view, date, data, typeById, clientById }) {
         </li>`)}
       </ul>`}
       ${!entries.length && html`<p class="side-empty">No time logged ${view === 'day' ? 'on this day' : `this ${view}`} yet.</p>`}
-      <${Button} variant="primary" icon="sparkles" class="w-full" onClick=${() => nav('notes', { date: u.date })}>Generate Kantata notes<//>
+      <${Button} variant="primary" icon="sparkles" class="w-full" onClick=${() => nav('notes', { date: u.date })}>Generate notes<//>
     </div>
 
     <div class="card side-card">

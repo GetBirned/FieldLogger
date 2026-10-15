@@ -4,11 +4,19 @@ export const APP_NAME = 'FieldLogger';
 // Bump DATA_VERSION whenever the shape of saved data changes, and add a MIGRATIONS step
 // that upgrades data from the version before. Steps run on load, after main.js has
 // snapshotted the data folder. Data from a newer FieldLogger opens read-only instead.
-export const DATA_VERSION = 2;
+export const DATA_VERSION = 3;
 
 const MIGRATIONS = {
   // 1.3.0 added implementations and customer codes to clients.
   2: (d) => ({ ...d, clients: (d.clients || []).map((c) => ({ implementations: [], customerCode: '', ...c })) }),
+  // 1.5.0 links the built-in action types to the milestones they count toward.
+  3: (d) => ({
+    ...d,
+    actionTypes: (d.actionTypes || []).map((t) => {
+      const def = DEFAULT_ACTION_TYPES.find((x) => x.id === t.id);
+      return def?.milestone && !('milestone' in t) ? { ...t, milestone: def.milestone } : t;
+    }),
+  }),
 };
 
 export const dataVersionOf = (raw) => Number(raw?.version) || 1;
@@ -78,14 +86,16 @@ export const PALETTE = [
   '#eab308', '#6366f1', '#14b8a6', '#84cc16', '#64748b', '#a855f7', '#0ea5e9', '#f43f5e',
 ];
 
+// `milestone` (optional) is the Kantata milestone an action counts toward: logging it
+// against an implementation offers to tick that milestone.
 export const DEFAULT_ACTION_TYPES = [
   { id: 'call', name: 'Phone Call', icon: 'phone', color: '#3b82f6', minutes: 30 },
   { id: 'email', name: 'Email', icon: 'mail', color: '#06b6d4', minutes: 15 },
-  { id: 'dbpop', name: 'Database Population', icon: 'database', color: '#8b5cf6', minutes: 60 },
-  { id: 'template', name: 'Template Walkthrough', icon: 'layout-template', color: '#ec4899', minutes: 60 },
-  { id: 'access', name: 'Confirm Client Access', icon: 'key-round', color: '#10b981', minutes: 15 },
-  { id: 'training-handoff', name: 'Training Handoff', icon: 'graduation-cap', color: '#f59e0b', minutes: 30 },
-  { id: 'sales-handoff', name: 'Sales Handoff', icon: 'handshake', color: '#f97316', minutes: 30 },
+  { id: 'dbpop', name: 'Database Population', icon: 'database', color: '#8b5cf6', minutes: 60, milestone: 'data' },
+  { id: 'template', name: 'Template Walkthrough', icon: 'layout-template', color: '#ec4899', minutes: 60, milestone: 'walkthrough' },
+  { id: 'access', name: 'Confirm Client Access', icon: 'key-round', color: '#10b981', minutes: 15, milestone: 'access' },
+  { id: 'training-handoff', name: 'Training Handoff', icon: 'graduation-cap', color: '#f59e0b', minutes: 30, milestone: 'training-handoff' },
+  { id: 'sales-handoff', name: 'Sales Handoff', icon: 'handshake', color: '#f97316', minutes: 30, milestone: 'sales-handoff' },
   { id: 'kickoff', name: 'Kickoff Meeting', icon: 'rocket', color: '#ef4444', minutes: 60 },
   { id: 'training', name: 'Training Session', icon: 'presentation', color: '#eab308', minutes: 90 },
   { id: 'config', name: 'Configuration', icon: 'settings-2', color: '#6366f1', minutes: 60 },
@@ -124,7 +134,7 @@ export const ERP_LOGOS = {
 
 // Kantata plan milestones. Kantata lists the same ten for each delivery element
 // in no particular order; here they run in the order the work usually happens.
-const MILESTONES = [
+export const MILESTONES = [
   { id: 'sales-handoff', name: 'Sales to Consulting Handoff' },
   { id: 'discovery', name: 'Discovery Call' },
   { id: 'access', name: 'Confirmed Client Access' },
@@ -147,6 +157,8 @@ export const IMPLEMENTATIONS = [
   { id: 'employee', name: 'Field Employee', icon: 'hard-hat', delivery: 'Professional Implementation and Training Services (B2W Employee App)', milestones: MILESTONES },
 ];
 
+export const milestoneName = (id) => MILESTONES.find((m) => m.id === id)?.name || '';
+
 export const implementationDef = (product) => IMPLEMENTATIONS.find((p) => p.id === product) || IMPLEMENTATIONS[0];
 
 // How far along an implementation is: { done, total }.
@@ -160,8 +172,9 @@ export const NOTE_TOKENS = [
   { token: '{event}', label: 'Event', hint: 'Phone Call' },
   { token: '{notes}', label: 'Notes', hint: 'your extra notes' },
   { token: '{client}', label: 'Client', hint: 'Granite Ridge Paving' },
-  { token: '{project}', label: 'Kantata project', hint: 'GRP - Implementation' },
+  { token: '{project}', label: 'Project', hint: 'GRP - Implementation' },
   { token: '{code}', label: 'Customer code', hint: 'GRPV' },
+  { token: '{implementation}', label: 'Implementation', hint: 'Estimate' },
   { token: '{duration}', label: 'Duration', hint: '1h 15m' },
   { token: '{hours}', label: 'Hours', hint: '1.25' },
   { token: '{date}', label: 'Date', hint: '10/14/2026' },

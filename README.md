@@ -1,10 +1,10 @@
 # FieldLogger
 
-**Log it in the field. Paste it into Kantata.**
+**Log it in the field. Copy it into your notes.**
 
 FieldLogger is a local desktop app for implementation consultants. Log each
 call, email, database population or walkthrough with one click, see it on a
-calendar, and get copy-ready Kantata note lines for every entry:
+calendar, and get copy-ready note lines for every entry:
 
 ```
 2:15 PM: Phone Call - Walked Jamie through the cost code import
@@ -30,16 +30,16 @@ Everything stays on your computer. There's no server, no cloud and no sign-up.
 | Log a past time range (2-3 PM) | Choose **Time range** in Log Action, or click and drag on the calendar |
 | Time a call while it happens | Choose **Start timer**. It runs in the top bar; hit stop when you're done |
 | One-click logging | **Quick log** buttons in the calendar side panel |
-| Copy notes into Kantata | **Kantata Notes**: copy one line, a whole project, or the whole day |
+| Copy notes | **Notes**: copy one line, a whole project, or the whole day |
 | Track what's been entered | Tick the checkbox per line, or leave **Check off on copy** on |
 | Clients, POCs, notes | **Clients**: set a customer code (like WARD), add contacts (star one as POC), write notes, mark active/inactive |
-| Implementations | Pick Estimate, Track, Schedule, Maintain and/or Field Employee for a client, tick off each one's Kantata milestones on the client page, and **Mark complete** when it's done |
-| Client logos | Click (or drop an image on) the client's tile, or paste one with Ctrl+V in Edit client. The logo then shows in Log Action, on the calendar and in Kantata Notes |
-| Engagement link | Paste the client's Kantata / Salesforce DX engagement URL in **Edit client** to get an **Open engagement** button on the client page and in Kantata Notes |
+| Implementations | Pick Estimate, Track, Schedule, Maintain and/or Field Employee for a client, tick off each one's milestones on the client page, and **Mark complete** when it's done. When you log an action that counts toward a milestone (set per action type), Log Action offers to tick it |
+| Client logos | Click (or drop an image on) the client's tile, or paste one with Ctrl+V in Edit client. The logo then shows in Log Action, on the calendar and in Notes |
+| Engagement link | Paste the client's Salesforce DX engagement URL in **Edit client** to get an **Open engagement** button on the client page and in Notes |
 | Profile picture | **Settings → Profile & PIN**: click, drop or paste a photo |
 | Staying signed in | FieldLogger reopens straight into your profile. With a PIN, it asks for the PIN on launch (turn that off in Settings). **Lock** keeps your profile selected; **Switch profile** returns to the picker |
 | Make it yours | **Settings → Appearance** for light/dark/system mode, the **Trimble** and **B2W** brand palettes, 12 accent colors or a custom one, the Trimble Gray dark mode, aurora glow and density |
-| Change the note format | **Settings → Kantata notes**. Tokens: `{time} {event} {notes} {client} {project} {duration} {hours} {date}` |
+| Change the note format | **Settings → Notes**. Tokens: `{time} {event} {notes} {client} {project} {duration} {hours} {date}` |
 
 Shortcuts: `Ctrl+L` log · `Ctrl+1-4` switch pages · `T` today · `←/→` move · `D/W/M` day/week/month · `Esc` close · `Ctrl+Enter` save.
 
@@ -74,7 +74,7 @@ npm run build        # build dist\FieldLogger-Setup-<version>.exe
 | `main.js` | Electron main process: window, file storage, backups, IPC |
 | `preload.js` | The small API the UI is allowed to call |
 | `src/app.js` | UI entry: theme engine, shortcuts, tooltips |
-| `src/components/` | Calendar, Log Action, Clients, Kantata Notes, Settings, launch screen |
+| `src/components/` | Calendar, Log Action, Clients, Notes, Settings, launch screen |
 | `src/lib/` | Store, time math, note formatting, defaults, sample data |
 | `src/vendor/` | Preact, htm, Lucide icons and fonts (refresh with `npm run vendor`) |
 | `assets/` | `logo.svg` and the generated `icon.png`/`icon.ico` (`npm run icon`) |

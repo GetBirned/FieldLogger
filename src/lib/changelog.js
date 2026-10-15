@@ -4,6 +4,19 @@
 
 export const CHANGELOG = [
   {
+    version: '1.5.0',
+    date: '2026-10-14',
+    title: 'Logged work moves milestones',
+    items: [
+      { kind: 'new', text: 'Log Action asks which implementation the work is for (Estimate, Track, …). With one implementation in progress it’s picked for you.' },
+      { kind: 'new', text: 'Actions that count toward a milestone offer to tick it as you log, dated the day of the work. Sales Handoff, Confirm Client Access, Training Handoff, Database Population and Template Walkthrough are linked already.' },
+      { kind: 'new', text: 'Link your own action types to a milestone in Settings → Action types.' },
+      { kind: 'improved', text: 'The notes page is now simply called Notes, with simpler wording throughout.' },
+      { kind: 'improved', text: 'Simpler PIN screen: just type your PIN. The prompt text and Unlock button are gone.' },
+      { kind: 'new', text: 'Each implementation shows the hours logged against it, client activity shows which implementation each entry was for, and notes can include it with {implementation}.' },
+    ],
+  },
+  {
     version: '1.4.0',
     date: '2026-10-14',
     title: 'Safer updates and one-click restore',
@@ -17,13 +30,13 @@ export const CHANGELOG = [
   {
     version: '1.3.0',
     date: '2026-10-14',
-    title: 'Implementations and Kantata milestones',
+    title: 'Implementations and milestones',
     items: [
       { kind: 'new', text: 'Mark which products a client is implementing: Estimate, Track, Schedule, Maintain and Field Employee. Pick as many as you need, and add more later from the client page.' },
-      { kind: 'new', text: 'Each implementation has its Kantata plan milestones as a checklist. Ticking one records the date.' },
+      { kind: 'new', text: 'Each implementation has its plan milestones as a checklist. Ticking one records the date.' },
       { kind: 'new', text: 'Mark an implementation complete (and reopen it if needed). Client cards show each implementation’s progress.' },
       { kind: 'improved', text: 'Implementations replace the old single phase stepper.' },
-      { kind: 'new', text: 'Customer code for each client (like WARD). It shows next to the name on the client page, is searchable, copies in one click, and can go in Kantata notes with {code}.' },
+      { kind: 'new', text: 'Customer code for each client (like WARD). It shows next to the name on the client page, is searchable, copies in one click, and can go in your notes with {code}.' },
       { kind: 'improved', text: 'Signing in with a PIN unlocks as soon as you type the right PIN. No need to press Unlock.' },
     ],
   },
@@ -55,7 +68,7 @@ export const CHANGELOG = [
     title: 'First release',
     items: [
       { kind: 'new', text: 'Log client actions on a day, week or month calendar, with a running timer and quick-log buttons.' },
-      { kind: 'new', text: 'Kantata Notes: copy-ready lines for each entry, grouped by client, with check-off as you paste.' },
+      { kind: 'new', text: 'Notes: copy-ready lines for each entry, grouped by client, with check-off as you paste.' },
       { kind: 'new', text: 'Clients with phases, contacts, notes, logos and a one-click engagement link.' },
       { kind: 'new', text: 'Profiles with optional PINs and profile pictures, plus daily backups.' },
       { kind: 'new', text: 'Trimble and B2W brand palettes, accent colors and a Trimble Gray dark mode.' },

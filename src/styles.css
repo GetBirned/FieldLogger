@@ -787,6 +787,7 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .gate-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .gate-pin { display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(420px, 100%); position: relative; }
 .gate-pin .gate-actions { width: 100%; justify-content: space-between; margin-top: 8px; }
+.gate-pin .gate-actions-center { justify-content: center; }
 .pin-dots { display: flex; gap: 12px; margin: 10px 0 4px; position: relative; }
 .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); transition: all 0.2s var(--ease-spring); }
 .pin-dot.is-filled { background: var(--accent-lift); border-color: var(--accent-lift); transform: scale(1.1); box-shadow: 0 0 10px var(--accent-glow); }
@@ -1479,3 +1480,12 @@ input::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
 .recover-icon { width: 44px; height: 44px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
 .readonly-banner { display: flex; align-items: center; gap: 10px; margin: 4px 24px 8px; padding: 10px 14px; border-radius: var(--r); border: 1px solid color-mix(in oklab, var(--warn) 45%, transparent); background: color-mix(in oklab, var(--warn) 12%, transparent); color: var(--text); font-size: 13px; }
 .readonly-banner .icon { color: var(--warn); flex: none; }
+
+/* Linking logged work to implementations and milestones (Log Action, client activity). */
+.chip.is-complete:not(.is-active) { color: var(--muted); }
+.ms-toggle { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 10px; border-radius: var(--r-sm); border: 1px dashed var(--border-strong); font-size: 13px; color: var(--text-2); cursor: pointer; }
+.ms-toggle.is-on { border-style: solid; border-color: color-mix(in oklab, var(--ok) 45%, transparent); background: color-mix(in oklab, var(--ok) 8%, transparent); }
+.ms-toggle b { color: var(--text); font-weight: 650; }
+.ms-note { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.ms-note .icon { color: var(--ok); }
+.impl-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; margin-left: 4px; border-radius: 5px; background: color-mix(in oklab, var(--cc, var(--accent)) 14%, transparent); color: var(--text-2); font-size: 11px; font-weight: 600; vertical-align: 1px; }

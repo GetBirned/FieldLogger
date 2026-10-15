@@ -136,10 +136,14 @@ export function buildDemoData(actionTypes) {
       const length = ranged ? Math.max(30, Math.round((type.minutes * (0.75 + rand() * 0.75)) / 15) * 15) : type.minutes;
       const end = new Date(start.getTime() + length * 60000);
       if (end.getTime() > nowMs) break;
+      // Tag work with one of the client's in-progress implementations (no extra rand() calls,
+      // so the rest of the sample data stays the same).
+      const open = (client?.implementations || []).filter((x) => !x.complete);
       entries.push({
         id: uid('e'),
         typeId: type.id,
         clientId: client?.id || null,
+        implementationId: open.length ? open[i % open.length].id : null,
         start: iso(start),
         end: ranged ? iso(end) : null,
         minutes: ranged ? null : type.minutes,

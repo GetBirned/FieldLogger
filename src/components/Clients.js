@@ -6,7 +6,7 @@ import {
 } from '../lib/store.js';
 import { ERP_LOGOS, ERP_SYSTEMS, IMPLEMENTATIONS, PALETTE, implementationDef, implementationProgress } from '../lib/defaults.js';
 import { dateKey, todayKey, parseKey, addDays, startOfWeek, fmtHours, fmtDateLong, fmtDateShort, relativeTime } from '../lib/time.js';
-import { entryMinutes, entryTimeText, renderLine, totalMinutes } from '../lib/notes.js';
+import { entryImplementation, entryMinutes, entryTimeText, renderLine, totalMinutes } from '../lib/notes.js';
 import { processLogo, chooseImage } from '../lib/image.js';
 import {
   Avatar, Button, ClientAvatar, ColorPicker, CopyButton, EmptyState, ErpLogo, Field, Icon, IconButton, ImageDrop, Menu, Modal, Segmented, Switch, TypeBadge, cx, usePasteImage,
@@ -128,7 +128,7 @@ function ClientCard({ client: c, stats, index }) {
       <${ClientAvatar} client=${c} size=${44} />
       <div class="cc-titles">
         <span class="cc-name">${c.name}</span>
-        <span class="cc-project">${c.kantataProject || 'No Kantata project set'}</span>
+        <span class="cc-project">${c.kantataProject || 'No project set'}</span>
       </div>
       ${c.erp && html`<span class="cc-erp" data-tip=${c.erp}><${ErpLogo} erp=${c.erp} logos=${ERP_LOGOS} size=${28} /></span>`}
       ${!c.active && html`<span class="badge badge-muted">Inactive</span>`}
@@ -228,12 +228,12 @@ function ClientDetail({ client: c, data }) {
           ${c.engagementUrl
             ? html`<a class="btn btn-secondary" href=${c.engagementUrl} target="_blank" rel="noreferrer" data-tip=${c.engagementUrl}>
                 <${Icon} name="external-link" size=${16} /><span>Open engagement</span></a>`
-            : html`<${Button} variant="ghost" icon="link" onClick=${() => setEditing(true)} data-tip="Paste the Kantata / Salesforce DX engagement page">Add engagement link<//>`}
+            : html`<${Button} variant="ghost" icon="link" onClick=${() => setEditing(true)} data-tip="Paste the Salesforce DX engagement page">Add engagement link<//>`}
           <${Button} variant="primary" icon="plus" onClick=${() => openLog({ clientId: c.id })}>Log action<//>
           <${Button} icon="pencil" onClick=${() => setEditing(true)}>Edit<//>
           <${Menu} trigger=${({ toggle }) => html`<${IconButton} icon="ellipsis" label="More" onClick=${toggle} />`} items=${[
             { label: c.active ? 'Mark inactive' : 'Mark active', icon: c.active ? 'archive' : 'archive-restore', run: toggleActive },
-            { label: 'Copy Kantata project name', icon: 'copy', run: () => copyText(c.kantataProject || c.name) },
+            { label: 'Copy project name', icon: 'copy', run: () => copyText(c.kantataProject || c.name) },
             c.customerCode && { label: 'Copy customer code', icon: 'copy', run: () => copyText(c.customerCode, 'Customer code copied') },
             c.engagementUrl && { label: 'Copy engagement link', icon: 'link', run: () => copyText(c.engagementUrl, 'Engagement link copied') },
             c.logo && { label: 'Remove logo', icon: 'image', run: () => updateClient(c.id, { logo: null }) },
@@ -246,7 +246,7 @@ function ClientDetail({ client: c, data }) {
 
     <div class="detail-grid">
       <div class="detail-main">
-        <${ImplementationsCard} client=${c} />
+        <${ImplementationsCard} client=${c} entries=${entries} />
         <div class="stat-tiles">
           <div class="stat-tile"><span class="eyebrow">This week</span><b>${fmtHours((stats?.week || 0) / 60)}<small>h</small></b></div>
           <div class="stat-tile"><span class="eyebrow">This month</span><b>${fmtHours(monthMinutes / 60)}<small>h</small></b></div>
@@ -266,15 +266,16 @@ function ClientDetail({ client: c, data }) {
                 ${g.items.map((e) => {
                   const t = typeById[e.typeId];
                   const line = renderLine(e, { type: t, client: c, settings: s });
+                  const tag = entryImplementation(e, c);
                   return html`<div class="act-row" onClick=${() => openEdit(e.id)}>
                     <${TypeBadge} type=${t} size=${30} />
                     <div class="act-text">
-                      <span class="act-title">${t?.name || 'Action'} <span class="muted">· ${entryTimeText(e, s.hour12)}</span></span>
+                      <span class="act-title">${t?.name || 'Action'} <span class="muted">· ${entryTimeText(e, s.hour12)}</span>${tag && html` <span class="impl-tag">${tag.def.name}</span>`}</span>
                       ${e.notes && html`<span class="act-notes">${e.notes}</span>`}
                     </div>
-                    ${e.entered && html`<span class="badge badge-ok"><${Icon} name="check" size=${11} stroke=${3} /> Kantata</span>`}
+                    ${e.entered && html`<span class="badge badge-ok"><${Icon} name="check" size=${11} stroke=${3} /> Entered</span>`}
                     <span class="act-hours">${entryMinutes(e) ? `${fmtHours(entryMinutes(e) / 60)}h` : ''}</span>
-                    <${CopyButton} compact text=${line} onCopy=${(x) => copyText(x)} label="Copy Kantata line" />
+                    <${CopyButton} compact text=${line} onCopy=${(x) => copyText(x)} label="Copy note line" />
                   </div>`;
                 })}
               </div>`)}
@@ -319,8 +320,14 @@ function ClientDetail({ client: c, data }) {
 }
 
 // The client's implementations (Estimate, Track, …), each with its Kantata milestone checklist.
-function ImplementationsCard({ client: c }) {
+function ImplementationsCard({ client: c, entries }) {
   const list = c.implementations || [];
+  // Logged time per implementation.
+  const minutesBy = useMemo(() => {
+    const m = {};
+    for (const e of entries) if (e.implementationId) m[e.implementationId] = (m[e.implementationId] || 0) + entryMinutes(e);
+    return m;
+  }, [entries]);
   // One in-progress implementation per product; a finished one can be started again.
   const inProgress = new Set(list.filter((i) => !i.complete).map((i) => i.product));
   const addable = IMPLEMENTATIONS.filter((p) => !inProgress.has(p.id));
@@ -335,14 +342,14 @@ function ImplementationsCard({ client: c }) {
         items=${addable.map((p) => ({ label: p.name, icon: p.icon, run: () => add(p) }))} />`}
     </div>
     ${list.length === 0
-      ? html`<p class="card-empty">Add the products ${c.name} is implementing (Estimate, Track, Schedule, Maintain, Field Employee) to track their Kantata milestones.</p>`
+      ? html`<p class="card-empty">Add the products ${c.name} is implementing (Estimate, Track, Schedule, Maintain, Field Employee) to track their milestones.</p>`
       : html`<div class="impls">
-          ${list.map((i) => html`<${ImplementationPanel} key=${i.id} client=${c} impl=${i} />`)}
+          ${list.map((i) => html`<${ImplementationPanel} key=${i.id} client=${c} impl=${i} minutes=${minutesBy[i.id] || 0} />`)}
         </div>`}
   </div>`;
 }
 
-function ImplementationPanel({ client: c, impl }) {
+function ImplementationPanel({ client: c, impl, minutes }) {
   const def = implementationDef(impl.product);
   const p = implementationProgress(impl);
   const [open, setOpen] = useState(!impl.complete);
@@ -369,7 +376,7 @@ function ImplementationPanel({ client: c, impl }) {
         <span class="impl-icon"><${Icon} name=${def.icon} size=${16} /></span>
         <span class="impl-titles">
           <span class="impl-name">${def.name}</span>
-          ${def.delivery && html`<span class="impl-delivery">${def.delivery}</span>`}
+          <span class="impl-delivery">${[minutes ? `${fmtHours(minutes / 60)}h logged` : '', def.delivery].filter(Boolean).join(' · ') || 'No time logged yet'}</span>
         </span>
         <${Icon} name=${open ? 'chevron-up' : 'chevron-down'} size=${16} />
       </button>
@@ -512,7 +519,7 @@ export function ClientForm({ client, onClose, count = 0 }) {
     onClose();
   };
 
-  return html`<${Modal} title=${client ? 'Edit client' : 'New client'} subtitle="Project details used across FieldLogger and in your Kantata notes" icon="building-2" onClose=${onClose} width=${620}
+  return html`<${Modal} title=${client ? 'Edit client' : 'New client'} subtitle="Project details used across FieldLogger and in your notes" icon="building-2" onClose=${onClose} width=${620}
     footer=${html`<${Button} variant="ghost" onClick=${onClose}>Cancel<//><${Button} variant="primary" icon="check" onClick=${save}>${client ? 'Save client' : 'Add client'}<//>`}>
     <div class="form-stack" onKeyDown=${(e) => e.key === 'Enter' && e.ctrlKey && save()}>
       <div class="form-hero">
@@ -537,9 +544,9 @@ export function ClientForm({ client, onClose, count = 0 }) {
         <${Button} size="sm" icon="image-plus" onClick=${async () => { const file = await chooseImage(); if (file) pickLogo(file); }}>${f.logo ? 'Replace' : 'Upload logo'}<//>
         ${f.logo && html`<${Button} size="sm" variant="ghost" onClick=${() => setF((prev) => ({ ...prev, logo: null }))}>Remove<//>`}
       </div>
-      <${Field} label="Kantata project" hint="Shows on Kantata Notes so you know exactly where to paste."><input class="input" value=${f.kantataProject} onInput=${set('kantataProject')} placeholder="e.g. GRP - B2W Estimate Implementation" /><//>
+      <${Field} label="Project" hint="Shows on Notes so you know exactly where to paste."><input class="input" value=${f.kantataProject} onInput=${set('kantataProject')} placeholder="e.g. GRP - B2W Estimate Implementation" /><//>
       <${Field} label="Engagement page" error=${urlError}
-        hint="Paste the client's Kantata / Salesforce DX engagement URL. You'll get a one-click “Open engagement” button on the client page and Kantata Notes.">
+        hint="Paste the client's Salesforce DX engagement URL. You'll get a one-click “Open engagement” button on the client page and Notes.">
         <div class="input-icon">
           <${Icon} name="link" size=${16} />
           <input class="input" value=${f.engagementUrl} onInput=${(e) => { set('engagementUrl')(e); setUrlError(''); }} placeholder="https://yourcompany.lightning.force.com/…" spellcheck=${false} />

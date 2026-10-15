@@ -1,4 +1,4 @@
-// Kantata Notes: every entry for a day rendered as a copy-ready line,
+// Notes: every entry for a day rendered as a copy-ready line,
 // grouped by client/project with rounded hours.
 import { html, useMemo, useRef } from '../lib/h.js';
 import { useSession, useUi, setUi, setSettings, setEntered, openLog, openEdit, copyText, toast, nav } from '../lib/store.js';
@@ -40,7 +40,7 @@ export function NotesView() {
   const enteredCount = rows.filter((r) => r.e.entered).length;
 
   const onCopyLine = async (r, text) => {
-    await copyText(text, 'Line copied. Paste it into Kantata');
+    await copyText(text, 'Line copied');
     if (s.autoMarkOnCopy && !r.e.entered) setEntered([r.e.id], true);
   };
   const onCopyGroup = async (g, text) => {
@@ -105,7 +105,7 @@ export function NotesView() {
             <span class="muted">${s.roundTo ? `Rounded ${s.roundMode === 'up' ? 'up ' : ''}to ${s.roundTo}h per project` : 'Exact'}</span></div>
           <div class="ns-item"><span class="eyebrow">Entries</span><b>${rows.length}</b><span class="muted">${groups.length} ${s.notesGroup === 'time' ? 'list' : groups.length === 1 ? 'project' : 'projects'}</span></div>
           <div class="ns-item ns-progress">
-            <span class="eyebrow">Entered in Kantata</span>
+            <span class="eyebrow">Entered</span>
             <b>${enteredCount}<small>/${rows.length}</small></b>
             <${Progress} value=${enteredCount} max=${rows.length} tone=${enteredCount === rows.length ? 'ok' : null} />
           </div>
@@ -114,7 +114,7 @@ export function NotesView() {
           </div>
         </div>
 
-        ${enteredCount === rows.length && html`<div class="all-done"><${Icon} name="party-popper" size=${18} /> All caught up. Every entry for this day is in Kantata.</div>`}
+        ${enteredCount === rows.length && html`<div class="all-done"><${Icon} name="party-popper" size=${18} /> All caught up. Every entry for this day is entered.</div>`}
 
         <div class="note-groups">
           ${groups.map((g, gi) => {
@@ -129,7 +129,7 @@ export function NotesView() {
                 <div class="ng-titles">
                   <span class="ng-name">${s.notesGroup === 'time' ? 'All entries' : g.client?.name || 'Internal / no client'}</span>
                   ${s.notesGroup !== 'time' && html`<button type="button" class="ng-project" onClick=${() => copyText(g.client?.kantataProject || g.client?.name || 'Internal', 'Project name copied')} data-tip="Copy project name">
-                    <${Icon} name="clipboard-list" size=${13} /> ${g.client?.kantataProject || 'No Kantata project set'}
+                    <${Icon} name="clipboard-list" size=${13} /> ${g.client?.kantataProject || 'No project set'}
                   </button>`}
                 </div>
                 <button type="button" class="hours-pill" onClick=${() => copyText(fmtHours(hours), `${fmtHours(hours)} hours copied`)} data-tip="Copy hours">
@@ -142,7 +142,7 @@ export function NotesView() {
               </header>
               <div class="ng-lines">
                 ${g.rows.map((r) => html`<div key=${r.e.id} class=${cx('nline', r.e.entered && 'is-entered')}>
-                  <button type="button" class=${cx('check', r.e.entered && 'is-on')} onClick=${() => setEntered([r.e.id], !r.e.entered)} aria-label="Entered in Kantata" data-tip=${r.e.entered ? 'Entered in Kantata' : 'Mark as entered'}>
+                  <button type="button" class=${cx('check', r.e.entered && 'is-on')} onClick=${() => setEntered([r.e.id], !r.e.entered)} aria-label="Entered" data-tip=${r.e.entered ? 'Entered' : 'Mark as entered'}>
                     <${Icon} name="check" size=${13} stroke=${3} />
                   </button>
                   <${TypeBadge} type=${r.type} size=${26} />

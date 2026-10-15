@@ -206,7 +206,7 @@ function PinUnlock({ profile, onBack }) {
   };
 
   // PINs are 4-8 digits and the length isn't stored, so check quietly from the 4th digit on and
-  // unlock as soon as it matches. A wrong PIN only shows an error on Enter / Unlock, or at 8 digits.
+  // unlock as soon as it matches. A wrong PIN only shows an error on Enter, or at 8 digits.
   const onInput = async (e) => {
     const value = e.currentTarget.value.replace(/\D/g, '').slice(0, 8);
     setPin(value);
@@ -228,16 +228,14 @@ function PinUnlock({ profile, onBack }) {
   return html`<form class=${cx('gate-card gate-pin', shake && 'shake')} onSubmit=${submit} onClick=${() => ref.current?.focus()}>
     <${Avatar} name=${profile.name} color=${profile.color} src=${profile.photo} size=${72} />
     <h2 class="gate-title">Welcome back, ${profile.name.split(' ')[0]}</h2>
-    <p class="muted">Enter your PIN. You'll be signed in as soon as it's right.</p>
     <div class="pin-dots" aria-hidden="true">
       ${Array.from({ length: Math.max(4, pin.length) }, (_, i) => html`<span class=${cx('pin-dot', i < pin.length && 'is-filled')}></span>`)}
     </div>
     <input ref=${ref} class="pin-hidden" type="password" inputmode="numeric" maxlength="8" autofocus value=${pin}
       onInput=${onInput} aria-label="PIN" />
     ${error && html`<div class="form-error">${typeof error === 'string' ? error : 'Incorrect PIN. Try again.'}</div>`}
-    <div class="gate-actions">
+    <div class="gate-actions gate-actions-center">
       <${Button} variant="ghost" icon="arrow-left" onClick=${onBack}>Switch profile</${Button}>
-      <button type="submit" class="btn btn-primary" disabled=${pin.length < 4}><${Icon} name="lock-open" size=${16} /><span>Unlock</span></button>
     </div>
   </form>`;
 }

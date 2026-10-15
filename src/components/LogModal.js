@@ -1,9 +1,9 @@
 // "Log Action" dialog: create or edit an entry, or start a live timer.
 import { html, useEffect, useMemo, useRef, useState } from '../lib/h.js';
 import {
-  useSession, useUi, closeLog, addEntry, updateEntry, deleteEntry, startTimer, stopTimer, addClient, updateData, toast, setUi, copyText,
+  useSession, useUi, closeLog, addEntry, updateEntry, deleteEntry, startTimer, stopTimer, addClient, updateData, toast, setUi, copyText, setMilestone, clearMilestone,
 } from '../lib/store.js';
-import { PALETTE } from '../lib/defaults.js';
+import { PALETTE, implementationDef, milestoneName } from '../lib/defaults.js';
 import { dateKey, todayKey, toTimeInput, combine, minutesToInput, fmtDuration, fmtDateLong } from '../lib/time.js';
 import { renderLine } from '../lib/notes.js';
 import { Button, ClientAvatar, CopyButton, Field, Icon, Kbd, Modal, Segmented, Switch, TypeBadge, cx } from './ui.js';
@@ -43,6 +43,7 @@ export function LogModal({ state }) {
         minutes: existing.minutes || 0,
         notes: existing.notes || '',
         entered: Boolean(existing.entered),
+        implementationId: existing.implementationId || null,
       };
     }
     const type = data.actionTypes.find((t) => t.id === pre.typeId);
@@ -61,6 +62,7 @@ export function LogModal({ state }) {
       minutes: type?.minutes ?? 0,
       notes: '',
       entered: false,
+      implementationId: pre.implementationId,
     };
   }, []);
 
@@ -103,6 +105,33 @@ export function LogModal({ state }) {
   const types = data.actionTypes.filter((t) => !t.archived || t.id === typeId);
   const type = data.actionTypes.find((t) => t.id === typeId);
   const client = data.clients.find((c) => c.id === clientId);
+
+  // Implementation: the client's product this work belongs to. undefined = not decided yet,
+  // so it's picked automatically; null = the user chose "None".
+  const impls = client?.implementations || [];
+  const [implId, setImplId] = useState(init.implementationId);
+  const autoImpl = () => {
+    const open = impls.filter((i) => !i.complete);
+    if (open.length === 1) return open[0].id;
+    // Several in progress: prefer the one still waiting on this action's milestone.
+    const waiting = type?.milestone ? open.filter((i) => !i.done?.[type.milestone]) : [];
+    return waiting.length === 1 ? waiting[0].id : null;
+  };
+  const picked = implId === undefined ? autoImpl() : implId;
+  const impl = impls.find((i) => i.id === picked) || null;
+  // Changing the client re-picks the implementation (but not on first open, which may be pre-filled).
+  const clientSeen = useRef(false);
+  useEffect(() => {
+    if (clientSeen.current) setImplId(undefined);
+    clientSeen.current = true;
+  }, [clientId]);
+
+  // Milestone: offer to tick the action's milestone on that implementation if it isn't done yet.
+  const msId = type?.milestone && impl && implementationDef(impl.product).milestones.some((m) => m.id === type.milestone) ? type.milestone : null;
+  const msDoneAt = msId ? impl.done?.[msId] : null;
+  const [markMs, setMarkMs] = useState(true);
+  useEffect(() => setMarkMs(true), [msId, impl?.id]);
+  const willMark = Boolean(msId && !msDoneAt && markMs);
 
   const pickType = (t) => {
     setTypeId(t.id);
@@ -147,22 +176,30 @@ export function LogModal({ state }) {
         const prev = stopTimer();
         if (prev) toast('Previous timer stopped and logged', { tone: 'info', icon: 'timer' });
       }
-      startTimer({ typeId, clientId, notes: notes.trim() });
+      startTimer({ typeId, clientId, notes: notes.trim(), implementationId: impl?.id || null, markMilestone: willMark ? msId : null });
       toast(`Timer running · ${type.name}`, { icon: 'timer' });
       closeLog();
       return;
     }
 
     const d = draft();
-    const fields = { typeId, clientId: clientId || null, notes: notes.trim(), ...d };
+    const fields = { typeId, clientId: clientId || null, implementationId: impl?.id || null, notes: notes.trim(), ...d };
+    if (willMark) setMilestone(client.id, impl.id, msId, d.start);
+    const marked = willMark ? ` · ${milestoneName(msId)} ✓` : '';
     if (editing) {
       updateEntry(existing.id, { ...fields, entered, enteredAt: entered ? existing.enteredAt || new Date().toISOString() : null });
-      toast('Entry updated', { icon: 'circle-check' });
+      toast(`Entry updated${marked}`, { icon: 'circle-check' });
     } else {
       const entry = addEntry(fields);
-      toast(`Logged ${type.name}${client ? ` · ${client.name}` : ''}`, {
+      toast(`Logged ${type.name}${client ? ` · ${client.name}` : ''}${marked}`, {
         icon: 'circle-check',
-        action: { label: 'Undo', run: () => updateData((dd) => ({ ...dd, entries: dd.entries.filter((x) => x.id !== entry.id) })) },
+        action: {
+          label: 'Undo',
+          run: () => {
+            updateData((dd) => ({ ...dd, entries: dd.entries.filter((x) => x.id !== entry.id) }));
+            if (willMark) clearMilestone(client.id, impl.id, msId, d.start);
+          },
+        },
       });
     }
     if (u.page === 'calendar') setUi({ date: dateKey(new Date(d.start)) });
@@ -178,7 +215,7 @@ export function LogModal({ state }) {
 
   const duplicate = () => {
     const d = draft();
-    addEntry({ typeId, clientId, notes: notes.trim(), ...d, entered: false });
+    addEntry({ typeId, clientId, implementationId: impl?.id || null, notes: notes.trim(), ...d, entered: false });
     toast('Entry duplicated', { icon: 'copy' });
     closeLog();
   };
@@ -232,6 +269,26 @@ export function LogModal({ state }) {
         <${ClientPicker} value=${clientId} onChange=${setClientId} clients=${data.clients} entries=${data.entries} />
       </div>
 
+      ${impls.length > 0 && html`<div class="field">
+        <span class="field-label">Implementation</span>
+        <div class="chips">
+          ${impls.map((i) => {
+            const def = implementationDef(i.product);
+            return html`<button type="button" class=${cx('chip', picked === i.id && 'is-active', i.complete && 'is-complete')} onClick=${() => setImplId(i.id)}
+                data-tip=${i.complete ? `${def.name} (complete)` : def.name}>
+              <${Icon} name=${i.complete ? 'circle-check' : def.icon} size=${14} />${def.name}
+            </button>`;
+          })}
+          <button type="button" class=${cx('chip', picked === null && 'is-active')} onClick=${() => setImplId(null)}>None</button>
+        </div>
+        ${msId && (msDoneAt
+          ? html`<div class="ms-note"><${Icon} name="circle-check" size=${14} /> ${milestoneName(msId)} is already done on ${implementationDef(impl.product).name} (${fmtDateLong(msDoneAt)}).</div>`
+          : html`<label class=${cx('ms-toggle', markMs && 'is-on')}>
+              <button type="button" class=${cx('check', markMs && 'is-on')} onClick=${() => setMarkMs(!markMs)} aria-pressed=${markMs}><${Icon} name="check" size=${13} stroke=${3} /></button>
+              <span>Mark <b>${milestoneName(msId)}</b> done on ${implementationDef(impl.product).name}${mode === 'timer' ? ' when the timer stops' : ''}</span>
+            </label>`)}
+      </div>`}
+
       <div class="field">
         <span class="field-label">When</span>
         <${Segmented} value=${mode} options=${modeOptions} onChange=${setMode} class="seg-wide" />
@@ -281,15 +338,15 @@ export function LogModal({ state }) {
       </div>
 
       <${Field} label="Notes">
-        <textarea ref=${notesRef} class="input textarea" rows="2" value=${notes} placeholder="Extra detail for Kantata, e.g. Walked Jamie through the cost code import"
+        <textarea ref=${notesRef} class="input textarea" rows="2" value=${notes} placeholder="Extra detail for your notes, e.g. Walked Jamie through the cost code import"
           onInput=${(e) => setNotes(e.currentTarget.value)}></textarea>
       <//>
 
-      ${editing && html`<${Switch} checked=${entered} onChange=${setEntered} label="Entered in Kantata" hint="Mark this once you've copied it into your Kantata time entry." />`}
+      ${editing && html`<${Switch} checked=${entered} onChange=${setEntered} label="Entered" hint="Mark this once you've copied it into your time entry." />`}
 
       ${preview && html`<div class=${cx('kantata-preview', !type && 'is-empty')}>
-        <div class="kp-label"><${Icon} name="clipboard-list" size=${14} /> Kantata line</div>
-        <div class="kp-line">${type ? preview : 'Pick an action to preview the line you will paste into Kantata.'}</div>
+        <div class="kp-label"><${Icon} name="clipboard-list" size=${14} /> Note line</div>
+        <div class="kp-line">${type ? preview : 'Pick an action to preview the line you will copy.'}</div>
         ${type && html`<${CopyButton} compact text=${preview} onCopy=${(t) => copyText(t)} label="Copy line" />`}
       </div>`}
       </div>

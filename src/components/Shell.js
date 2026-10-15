@@ -16,7 +16,7 @@ import { LogModal } from './LogModal.js';
 const NAV = [
   { id: 'calendar', label: 'Calendar', icon: 'calendar-days', key: '1' },
   { id: 'clients', label: 'Clients', icon: 'building-2', key: '2' },
-  { id: 'notes', label: 'Kantata Notes', icon: 'clipboard-list', key: '3' },
+  { id: 'notes', label: 'Notes', icon: 'clipboard-list', key: '3' },
   { id: 'settings', label: 'Settings', icon: 'settings', key: '4' },
 ];
 
@@ -106,7 +106,7 @@ function Topbar({ page, data, profile }) {
   const titles = {
     calendar: [`${greeting()}, ${profile.name.split(' ')[0]}`, fmtDateLong(new Date())],
     clients: ['Clients', `${data.clients.filter((c) => c.active).length} active · ${data.clients.filter((c) => !c.active).length} inactive`],
-    notes: ['Kantata Notes', 'Copy-ready lines for your Kantata time entries'],
+    notes: ['Notes', 'Copy-ready lines for your time entries'],
     settings: ['Settings', 'Make FieldLogger yours'],
   };
   const [title, sub] = titles[page] || ['', ''];

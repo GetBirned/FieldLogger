@@ -6,7 +6,7 @@ import {
 } from '../lib/store.js';
 import { processPhoto } from '../lib/image.js';
 import { bridge, isElectron } from '../lib/bridge.js';
-import { ACCENTS, BRAND_PALETTES, ACTION_ICONS, NOTE_TOKENS, DEFAULT_TEMPLATE, PALETTE, APP_NAME, isNewerData, uid } from '../lib/defaults.js';
+import { ACCENTS, BRAND_PALETTES, ACTION_ICONS, NOTE_TOKENS, DEFAULT_TEMPLATE, PALETTE, APP_NAME, MILESTONES, isNewerData, milestoneName, uid } from '../lib/defaults.js';
 import { renderLine } from '../lib/notes.js';
 import { fmtHourLabel, fmtDateLong, parseKey } from '../lib/time.js';
 import { CHANGELOG, LATEST_VERSION } from '../lib/changelog.js';
@@ -17,7 +17,7 @@ import { BackupList } from './Backups.js';
 const TABS = [
   { id: 'appearance', label: 'Appearance', icon: 'palette' },
   { id: 'types', label: 'Action types', icon: 'layout-grid' },
-  { id: 'notes', label: 'Kantata notes', icon: 'clipboard-list' },
+  { id: 'notes', label: 'Notes', icon: 'clipboard-list' },
   { id: 'calendar', label: 'Calendar', icon: 'calendar-days' },
   { id: 'profile', label: 'Profile & PIN', icon: 'user-round' },
   { id: 'data', label: 'Data & backup', icon: 'database' },
@@ -190,7 +190,7 @@ function ActionTypes({ data }) {
           <${TypeBadge} type=${t} size=${34} />
           <div class="type-row-text">
             <span class="type-row-name">${t.name} ${t.archived && html`<span class="badge badge-muted">Hidden</span>`}</span>
-            <span class="muted">${t.minutes ? `Typically ${t.minutes} min` : 'No default time'} · used ${usage[t.id] || 0}×</span>
+            <span class="muted">${t.minutes ? `Typically ${t.minutes} min` : 'No default time'} · used ${usage[t.id] || 0}×${t.milestone ? ` · counts toward ${milestoneName(t.milestone)}` : ''}</span>
           </div>
           ${t.archived
             ? html`<${Button} size="sm" icon="eye" onClick=${() => saveActionType({ ...t, archived: false })}>Show<//>`
@@ -205,11 +205,14 @@ function ActionTypes({ data }) {
 }
 
 function TypeEditor({ type, count, onClose }) {
-  const [f, setF] = useState(() => ({ id: type?.id || uid('a'), name: type?.name || '', icon: type?.icon || 'sparkles', color: type?.color || PALETTE[count % PALETTE.length], minutes: type?.minutes ?? 30, archived: type?.archived || false }));
+  const [f, setF] = useState(() => ({
+    id: type?.id || uid('a'), name: type?.name || '', icon: type?.icon || 'sparkles', color: type?.color || PALETTE[count % PALETTE.length],
+    minutes: type?.minutes ?? 30, milestone: type?.milestone || '', archived: type?.archived || false,
+  }));
   const [error, setError] = useState('');
   const save = () => {
     if (!f.name.trim()) return setError('Give it a name.');
-    saveActionType({ ...f, name: f.name.trim(), minutes: Math.max(0, Number(f.minutes) || 0) });
+    saveActionType({ ...f, name: f.name.trim(), minutes: Math.max(0, Number(f.minutes) || 0), milestone: f.milestone || null });
     toast(type ? 'Action type saved' : `Added “${f.name.trim()}”`, { icon: 'circle-check' });
     onClose();
   };
@@ -222,6 +225,12 @@ function TypeEditor({ type, count, onClose }) {
       </div>
       <${Field} label="Typical duration (minutes)" hint="Pre-fills 'time spent' when you log this action. Use 0 for none.">
         <input class="input" type="number" min="0" max="720" step="5" value=${f.minutes} onInput=${(e) => setF({ ...f, minutes: e.currentTarget.value })} style=${{ maxWidth: '160px' }} />
+      <//>
+      <${Field} label="Counts toward milestone" hint="When you log this action against an implementation, FieldLogger offers to tick this milestone.">
+        <select class="input" value=${f.milestone} onChange=${(e) => setF({ ...f, milestone: e.currentTarget.value })} style=${{ maxWidth: '320px' }}>
+          <option value="">None</option>
+          ${MILESTONES.map((m) => html`<option value=${m.id}>${m.name}</option>`)}
+        </select>
       <//>
       <${Field} label="Color" group><${ColorPicker} value=${f.color} onChange=${(v) => setF({ ...f, color: v })} /><//>
       <${Field} label="Icon" group>
@@ -262,7 +271,7 @@ function NoteFormat({ data }) {
   };
 
   return html`
-    <${Section} title="Line format" desc="How each entry is written on the Kantata Notes page. Click a token to add it.">
+    <${Section} title="Line format" desc="How each entry is written on the Notes page. Click a token to add it.">
       <div class="tpl-input">
         <input class="input input-mono" value=${tpl} onInput=${(e) => setTpl(e.currentTarget.value)} onBlur=${() => commit(tpl)}
           onKeyDown=${(e) => e.key === 'Enter' && commit(tpl)} spellcheck=${false} />
@@ -279,8 +288,8 @@ function NoteFormat({ data }) {
       </div>
       <p class="set-hint">Empty pieces are tidied up automatically, so an entry with no notes reads <code>4:15 PM: Email</code> rather than ending in a dangling dash.</p>
     <//>
-    <${Section} title="Hours" desc="How time adds up on the Kantata Notes page.">
-      <${Row} label="Round hours to" hint="Applied per project per day, the way Kantata time entries work.">
+    <${Section} title="Hours" desc="How time adds up on the Notes page.">
+      <${Row} label="Round hours to" hint="Applied per project per day, the way time entries work.">
         <${Segmented} value=${String(s.roundTo)} onChange=${(v) => setSettings({ roundTo: Number(v) })} options=${[{ value: '0', label: 'Exact' }, { value: '0.1', label: '0.1h' }, { value: '0.25', label: '¼h' }, { value: '0.5', label: '½h' }]} />
       <//>
       <${Row} label="Rounding" hint="Nearest is standard. Up never under-reports.">
@@ -289,7 +298,7 @@ function NoteFormat({ data }) {
       <${Row} label="Daily target" hint="Fills the ring in the sidebar.">
         <div class="num-input"><input class="input" type="number" min="1" max="16" step="0.5" value=${s.dailyTarget} onInput=${(e) => setSettings({ dailyTarget: Math.max(1, Number(e.currentTarget.value) || 8) })} /><span>hours</span></div>
       <//>
-      <${Row} label="Check off on copy" hint="Copying a line on Kantata Notes marks it entered.">
+      <${Row} label="Check off on copy" hint="Copying a line on Notes marks it entered.">
         <${Switch} checked=${s.autoMarkOnCopy} onChange=${(v) => setSettings({ autoMarkOnCopy: v })} />
       <//>
     <//>
@@ -575,7 +584,7 @@ function About() {
         <${LogoMark} size=${64} />
         <div>
           <${Wordmark} size=${26} />
-          <p class="muted">Version ${version} · Built for implementation consultants who live in Kantata.</p>
+          <p class="muted">Version ${version} · Built for implementation consultants.</p>
           <button type="button" class="link-btn" onClick=${() => setUi({ settingsTab: 'updates' })}><${Icon} name="history" size=${14} /> See what's new</button>
         </div>
       </div>

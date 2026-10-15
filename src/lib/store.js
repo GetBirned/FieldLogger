@@ -194,7 +194,7 @@ export const closeLog = () => setUi({ log: null });
 // ------------------------------------------------------------------------ entries
 
 export function addEntry(fields) {
-  const entry = { id: uid('e'), notes: '', minutes: null, end: null, clientId: null, entered: false, createdAt: now(), updatedAt: now(), ...fields };
+  const entry = { id: uid('e'), notes: '', minutes: null, end: null, clientId: null, implementationId: null, entered: false, createdAt: now(), updatedAt: now(), ...fields };
   updateData((d) => ({ ...d, entries: [...d.entries, entry] }));
   return entry;
 }
@@ -223,8 +223,9 @@ export function setEntered(ids, entered) {
 
 // -------------------------------------------------------------------------- timer
 
-export function startTimer({ typeId, clientId, notes }) {
-  updateData((d) => ({ ...d, timer: { typeId, clientId: clientId || null, notes: notes || '', start: now() } }));
+// markMilestone: tick the action's milestone on the implementation when the timer stops.
+export function startTimer({ typeId, clientId, notes, implementationId = null, markMilestone = null }) {
+  updateData((d) => ({ ...d, timer: { typeId, clientId: clientId || null, notes: notes || '', implementationId, markMilestone, start: now() } }));
 }
 
 export function stopTimer() {
@@ -234,7 +235,11 @@ export function stopTimer() {
   // Anything under a minute still counts as one minute so it shows on the calendar.
   const start = new Date(Math.min(new Date(timer.start).getTime(), end.getTime() - 60000));
   updateData((d) => ({ ...d, timer: null }));
-  return addEntry({ typeId: timer.typeId, clientId: timer.clientId, notes: timer.notes, start: start.toISOString(), end: end.toISOString() });
+  const entry = addEntry({
+    typeId: timer.typeId, clientId: timer.clientId, implementationId: timer.implementationId || null, notes: timer.notes, start: start.toISOString(), end: end.toISOString(),
+  });
+  if (timer.markMilestone && timer.clientId && timer.implementationId) setMilestone(timer.clientId, timer.implementationId, timer.markMilestone, start.toISOString());
+  return entry;
 }
 
 export const discardTimer = () => updateData((d) => ({ ...d, timer: null }));
@@ -275,8 +280,8 @@ export function deleteClient(id) {
   updateData((d) => ({
     ...d,
     clients: d.clients.filter((c) => c.id !== id),
-    entries: d.entries.map((e) => (e.clientId === id ? { ...e, clientId: null } : e)),
-    timer: d.timer && d.timer.clientId === id ? { ...d.timer, clientId: null } : d.timer,
+    entries: d.entries.map((e) => (e.clientId === id ? { ...e, clientId: null, implementationId: null } : e)),
+    timer: d.timer && d.timer.clientId === id ? { ...d.timer, clientId: null, implementationId: null, markMilestone: null } : d.timer,
   }));
 }
 
@@ -293,7 +298,31 @@ function patchImplementations(clientId, fn) {
 }
 
 export const addImplementation = (clientId, product) => patchImplementations(clientId, (list) => [...list, newImplementation(product)]);
-export const removeImplementation = (clientId, implId) => patchImplementations(clientId, (list) => list.filter((i) => i.id !== implId));
+
+// Entries logged against a removed implementation stay, just untagged.
+export function removeImplementation(clientId, implId) {
+  patchImplementations(clientId, (list) => list.filter((i) => i.id !== implId));
+  updateData((d) => ({
+    ...d,
+    entries: d.entries.map((e) => (e.implementationId === implId ? { ...e, implementationId: null } : e)),
+    timer: d.timer?.implementationId === implId ? { ...d.timer, implementationId: null, markMilestone: null } : d.timer,
+  }));
+}
+
+// Mark a milestone done as of `at` (the logged work's time). Leaves an already-done milestone alone.
+export function setMilestone(clientId, implId, milestoneId, at = now()) {
+  patchImplementations(clientId, (list) => list.map((i) => (i.id === implId && !i.done?.[milestoneId] ? { ...i, done: { ...i.done, [milestoneId]: at } } : i)));
+}
+
+// Undo for setMilestone: only clears the milestone if it still carries that same date.
+export function clearMilestone(clientId, implId, milestoneId, at) {
+  patchImplementations(clientId, (list) => list.map((i) => {
+    if (i.id !== implId || i.done?.[milestoneId] !== at) return i;
+    const done = { ...i.done };
+    delete done[milestoneId];
+    return { ...i, done };
+  }));
+}
 
 export function toggleMilestone(clientId, implId, milestoneId) {
   patchImplementations(clientId, (list) => list.map((i) => {
