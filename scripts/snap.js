@@ -55,24 +55,28 @@ const probe = `(() => { const cs = getComputedStyle(document.documentElement);
   const nav = document.querySelector('.nav-item.is-active');
   return ['--accent', '--accent-2', '--accent-lift', '--accent-text'].map((k) => k + '=' + cs.getPropertyValue(k).trim()).join(' | ')
     + ' | nav text=' + (nav ? getComputedStyle(nav).color : '?'); })()`;
+// The calendar scrolls to "now", which is empty in an evening run; show the working day instead.
+const morning = `[...document.querySelectorAll('.tg-scroll *')].find((e) => e.children.length === 0 && e.textContent.trim() === '8 AM')?.scrollIntoView({ block: 'start' })`;
 const clickEdit =`[...document.querySelectorAll('.hero-actions button')].find((b) => b.textContent.trim() === 'Edit').click()`;
 const escape = `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`;
 
 const shots = [
   { name: 'gate', before: null },
-  { name: 'day-light', js: [setup, fakePhoto, whiteLogo, theme('light'), ui({ page: 'calendar', calView: 'day' })] },
-  { name: 'week-light', js: [ui({ calView: 'week' })] },
+  { name: 'day-light', js: [setup, fakePhoto, whiteLogo, theme('light'), ui({ page: 'calendar', calView: 'day' }), morning] },
+  { name: 'week-light', js: [ui({ calView: 'week' }), morning] },
   { name: 'month-light', js: [ui({ calView: 'month' })] },
   { name: 'log-light', js: [ui({ calView: 'day' }), `__fl.openLog({ typeId: 'call' })`] },
   { name: 'log-filled-light', js: [`__fl.closeLog()`, `__fl.openLog({ typeId: 'call', clientId: __fl.session.get().data.clients[0].id })`,
     `(() => { const t = document.querySelector('.log-form textarea'); t.value = 'Walked Jamie through the cost code import'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`] },
+  { name: 'log-milestone-light', js: [`__fl.closeLog()`,
+    `__fl.openLog({ typeId: 'dbpop', clientId: __fl.session.get().data.clients.find((c) => c.name.startsWith('Ironwood')).id })`] },
   { name: 'clients-light', js: [`__fl.closeLog()`, ui({ page: 'clients', clientId: null })] },
   { name: 'client-detail-light', js: [firstClient] },
   { name: 'client-form-light', js: [clickEdit] },
   { name: 'settings-profile-light', js: [escape, ui({ page: 'settings', settingsTab: 'profile' })] },
   { name: 'notes-light', js: [ui({ page: 'notes', clientId: null })] },
   { name: 'settings-light', js: [ui({ page: 'settings', settingsTab: 'appearance' })] },
-  { name: 'day-dark', js: [theme('dark'), startTimer, ui({ page: 'calendar', calView: 'day' })] },
+  { name: 'day-dark', js: [theme('dark'), startTimer, ui({ page: 'calendar', calView: 'day' }), morning] },
   { name: 'week-dark', js: [ui({ calView: 'week' })] },
   { name: 'log-dark', js: [`__fl.openLog({ mode: 'range', dateKey: new Date().toISOString().slice(0,10), startMin: 600, endMin: 690 })`] },
   { name: 'notes-dark', js: [`__fl.closeLog()`, ui({ page: 'notes' })] },
