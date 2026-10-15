@@ -124,6 +124,13 @@ const web = {
       });
     },
   },
+  // Updates come from a shared folder on disk, which the browser preview can't reach.
+  updates: {
+    async config() { return { folder: '', builtIn: '', custom: false, version: 'preview' }; },
+    async setFolder() { throw new Error('Update folders are set in the desktop app.'); },
+    async check() { return { status: 'not-configured' }; },
+    async install() { throw new Error('Updates are installed by the desktop app.'); },
+  },
   // Backups live on disk, so the browser preview has none to offer.
   backups: {
     async list() { return []; },

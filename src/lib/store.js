@@ -26,6 +26,9 @@ function createStore(initial) {
 export const session = createStore({ profile: null, data: null, readOnly: false });
 export const ui = createStore({
   recovery: null, // { profile, message } when a profile's data file couldn't be read
+  update: null, // last update check: { status, version, notes, error, checking, checkedAt }
+  updateDismissed: null, // version the user said "Later" to this session
+  updateOpen: false, // the "new version" dialog
   page: 'calendar',
   calView: 'day',
   date: todayKey(),
@@ -155,6 +158,22 @@ export async function setProfilePin(pin) {
   const next = await bridge.profiles.setPin(profile.id, pin);
   session.set((s) => ({ ...s, profile: next }));
   return next;
+}
+
+// ------------------------------------------------------------------------ updates
+
+export async function checkForUpdates() {
+  setUi((s) => ({ update: { ...(s.update || {}), checking: true } }));
+  const result = await bridge.updates.check().catch((err) => ({ status: 'unreachable', error: err.message || String(err) }));
+  setUi({ update: { ...result, checking: false, checkedAt: now() } });
+  return result;
+}
+
+// Saves everything first; on success the app quits and the installer reopens it.
+export async function installUpdate() {
+  await flush();
+  flushSync();
+  return bridge.updates.install();
 }
 
 // ------------------------------------------------------------------------- toasts

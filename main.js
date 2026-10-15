@@ -5,6 +5,8 @@ const { app, BrowserWindow, ipcMain, nativeTheme, shell, dialog, clipboard, Menu
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const os = require('os');
+const { spawn } = require('child_process');
 
 const APP_NAME = 'FieldLogger';
 // The data folder name is pinned separately from the product name so a future
@@ -486,6 +488,104 @@ ipcMain.handle('data:exportText', async (e, text, suggestedName) => {
   return filePath;
 });
 
+// --------------------------------------------------------------------- updates
+// New versions are published to a shared folder (see scripts/publish-update.js) as
+// FieldLogger-Setup-<version>.exe plus latest.json { version, file, sha256, notes }.
+// The folder comes from Settings, falling back to the one built into package.json.
+
+const BUILT_IN_UPDATE_FOLDER = (() => {
+  try { return require('./package.json').fieldlogger?.updateFolder || ''; } catch { return ''; }
+})();
+const INSTALLER_NAME = /^FieldLogger-Setup-\d+\.\d+\.\d+\.exe$/;
+
+const updateFolder = () => readJson(APP_STATE_FILE, {}).updateFolder || BUILT_IN_UPDATE_FOLDER;
+
+function newerThan(a, b) {
+  const pa = String(a).split('.').map(Number);
+  const pb = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
+  return false;
+}
+
+// Network folders can hang for a long time when offline, so give up after a few seconds.
+const withTimeout = (promise, ms, what) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(`${what} took too long`)), ms)),
+]);
+
+async function readLatest(folder) {
+  const raw = await withTimeout(fs.promises.readFile(path.join(folder, 'latest.json'), 'utf8'), 8000, 'Reaching the update folder');
+  const latest = JSON.parse(raw);
+  if (!latest || typeof latest.version !== 'string' || !INSTALLER_NAME.test(String(latest.file)) || !/^[a-f0-9]{64}$/.test(String(latest.sha256))) {
+    throw new Error("The update folder's latest.json is incomplete.");
+  }
+  return latest;
+}
+
+ipcMain.handle('updates:config', () => ({
+  folder: updateFolder(),
+  builtIn: BUILT_IN_UPDATE_FOLDER,
+  custom: Boolean(readJson(APP_STATE_FILE, {}).updateFolder),
+  version: app.getVersion(),
+}));
+
+// folder: a path to use, '' to go back to the built-in folder, or undefined to pick one in a dialog.
+ipcMain.handle('updates:setFolder', async (e, folder) => {
+  let chosen = folder;
+  if (chosen === undefined) {
+    const { canceled, filePaths } = await dialog.showOpenDialog(BrowserWindow.fromWebContents(e.sender), {
+      title: 'Choose the FieldLogger update folder',
+      properties: ['openDirectory'],
+    });
+    if (canceled || !filePaths?.[0]) return null;
+    chosen = filePaths[0];
+  }
+  if (chosen && !fs.existsSync(chosen)) throw new Error("That folder doesn't exist.");
+  writeJsonAtomic(APP_STATE_FILE, { ...readJson(APP_STATE_FILE, {}), updateFolder: chosen || undefined });
+  return updateFolder();
+});
+
+// { status: 'not-configured' | 'unreachable' | 'current' | 'available', version, notes, error }
+ipcMain.handle('updates:check', async () => {
+  const folder = updateFolder();
+  if (!folder) return { status: 'not-configured' };
+  try {
+    const latest = await readLatest(folder);
+    if (!newerThan(latest.version, app.getVersion())) return { status: 'current', version: latest.version };
+    return { status: 'available', version: latest.version, date: latest.date || null, notes: latest.notes || null };
+  } catch (err) {
+    return { status: 'unreachable', error: err.message };
+  }
+});
+
+// Copies the installer locally, checks it against latest.json's SHA-256, then quits and
+// runs it silently and reopens FieldLogger once it finishes. The renderer saves first.
+ipcMain.handle('updates:install', async () => {
+  const folder = updateFolder();
+  if (!folder) throw new Error('No update folder is set.');
+  const latest = await readLatest(folder);
+  if (!newerThan(latest.version, app.getVersion())) throw new Error('You already have the latest version.');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fieldlogger-update-'));
+  const local = path.join(dir, latest.file);
+  await withTimeout(fs.promises.copyFile(path.join(folder, latest.file), local), 120000, 'Copying the installer');
+  const hash = crypto.createHash('sha256').update(fs.readFileSync(local)).digest('hex');
+  if (hash !== latest.sha256) {
+    fs.rmSync(dir, { recursive: true, force: true });
+    throw new Error("The installer in the update folder doesn't match its checksum (it may still be copying). Nothing was installed. Try again in a minute.");
+  }
+  if (process.env.FIELDLOGGER_SELFTEST) return 'verified';
+  // Wait for this app to exit so the installer can replace its files, install silently, then
+  // reopen this same exe. (The installer's own --force-run opens a Start menu shortcut that may
+  // not exist yet at that moment.) Verbatim so cmd sees the quoted paths as-is: Node's default
+  // escaping uses \" which cmd doesn't understand.
+  const relaunch = app.isPackaged ? ` & start "" "${process.execPath}"` : '';
+  spawn('cmd.exe', ['/c', `timeout /t 2 /nobreak >nul & start "" /wait "${local}" /S${relaunch}`], {
+    detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true,
+  }).unref();
+  setTimeout(() => app.quit(), 300);
+  return 'installing';
+});
+
 // ------------------------------------------------------------------------- app
 
 ipcMain.handle('app:info', () => ({
@@ -661,9 +761,31 @@ function runSelfTest(win) {
       out.downgradeRefused = await api.data.save(bad, { ...data, profileId: bad, version: 1 }).then(() => false, () => true);
       out.emptySaveRefused = await api.data.save(bad, { version: 99 }).then(() => false, () => true);
       await api.profiles.remove(bad);
+      // Update notices: newer versions are offered, older ignored, checksums enforced.
+      const upd = ${JSON.stringify(path.join(app.getPath('userData'), 'update-test'))};
+      await api.updates.setFolder(upd + '\\\\newer');
+      const newer = await api.updates.check();
+      out.updateOffered = newer.status === 'available' && newer.version === '99.0.0' && newer.notes.title === 'Test';
+      out.updateVerified = (await api.updates.install()) === 'verified';
+      await api.updates.setFolder(upd + '\\\\tampered');
+      out.updateBadChecksumRefused = await api.updates.install().then(() => false, (e) => String(e.message).includes('checksum'));
+      await api.updates.setFolder(upd + '\\\\older');
+      out.updateOlderIgnored = (await api.updates.check()).status === 'current';
+      await api.updates.setFolder('');
+      out.updateFolderCleared = (await api.updates.config()).custom === false;
       return out;
     })()`;
     try {
+      // Fake update folders: a newer release, the same with a wrong checksum, and an older one.
+      const upd = path.join(app.getPath('userData'), 'update-test');
+      const fakeExe = Buffer.from('not really an installer');
+      const sha = crypto.createHash('sha256').update(fakeExe).digest('hex');
+      for (const [dir, version, sha256] of [['newer', '99.0.0', sha], ['tampered', '99.0.0', 'f'.repeat(64)], ['older', '0.0.1', sha]]) {
+        const file = `FieldLogger-Setup-${version}.exe`;
+        fs.mkdirSync(path.join(upd, dir), { recursive: true });
+        fs.writeFileSync(path.join(upd, dir, file), fakeExe);
+        fs.writeFileSync(path.join(upd, dir, 'latest.json'), JSON.stringify({ version, file, sha256, notes: { title: 'Test', items: [] } }));
+      }
       // A half-written data file plus a good daily copy of it, for the data-safety checks.
       fs.writeFileSync(profileDataFile('pcorrupt01'), '{"clients": [', 'utf8');
       writeJsonAtomic(path.join(BACKUP_DIR, 'pcorrupt01-2026-01-01.json'),

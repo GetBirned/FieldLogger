@@ -13,6 +13,7 @@ import { CHANGELOG, LATEST_VERSION } from '../lib/changelog.js';
 import { Avatar, Button, ColorPicker, Field, Icon, IconButton, ImageDrop, Kbd, Modal, Segmented, Switch, TypeBadge, cx, usePasteImage } from './ui.js';
 import { LogoMark, Wordmark } from './Logo.js';
 import { BackupList } from './Backups.js';
+import { UpdateSettings } from './Updates.js';
 
 const TABS = [
   { id: 'appearance', label: 'Appearance', icon: 'palette' },
@@ -21,7 +22,7 @@ const TABS = [
   { id: 'calendar', label: 'Calendar', icon: 'calendar-days' },
   { id: 'profile', label: 'Profile & PIN', icon: 'user-round' },
   { id: 'data', label: 'Data & backup', icon: 'database' },
-  { id: 'updates', label: 'Update log', icon: 'history' },
+  { id: 'updates', label: 'Updates', icon: 'history' },
   { id: 'about', label: 'Shortcuts & about', icon: 'keyboard' },
 ];
 
@@ -541,6 +542,9 @@ const KIND = {
 function UpdateLog() {
   const version = useAppVersion();
   return html`
+    <${Section} title="Updates" desc="Where FieldLogger looks for new versions.">
+      <${UpdateSettings} />
+    <//>
     <${Section} title="Update log" desc=${`You're on version ${version}. Here's what changed in each release.`}>
       <div class="changelog">
         ${CHANGELOG.map((r) => html`<article class=${cx('release', r.version === version && 'is-current')}>

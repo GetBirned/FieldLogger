@@ -4,6 +4,17 @@
 
 export const CHANGELOG = [
   {
+    version: '1.6.0',
+    date: '2026-10-14',
+    title: 'Update in one click',
+    items: [
+      { kind: 'new', text: 'FieldLogger checks your team’s shared update folder and lets you know when a new version is ready, with what changed.' },
+      { kind: 'new', text: 'Update now saves your work, installs the new version and reopens FieldLogger. A full copy of your data is kept first.' },
+      { kind: 'new', text: 'Choose the update folder, or check right away, in Settings → Updates.' },
+      { kind: 'improved', text: 'Installers are verified before they run, so a damaged or half-copied file is never installed.' },
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-10-14',
     title: 'Logged work moves milestones',

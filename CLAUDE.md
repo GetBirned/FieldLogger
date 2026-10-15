@@ -13,6 +13,12 @@ Fully offline: no server, no accounts. The full build conversation is kept local
 - PowerShell: `$env:Path = "$PWD\.tools\node;" + $env:Path`, then `npm install`.
   Electron downloads its binary lazily: run `node node_modules/electron/install.js` once.
 - `npm start` runs the app; `npm run build` makes `dist\FieldLogger-Setup-<ver>.exe` (NSIS, per-user, unsigned).
+- Releasing to the team: bump the version + changelog entry, `npm run build`, then `npm run publish-update`
+  (copies the installer and writes `latest.json` with its SHA-256 and notes to the shared update folder:
+  `fieldlogger.updateFolder` in package.json, or pass a folder). Installed apps check that folder at
+  startup and every 4 hours and offer "Update now" (main.js `updates:*`: verifies the SHA-256, quits,
+  runs the installer with `/S` and waits, then reopens `process.execPath`. Don't use the installer's
+  `--force-run`: it opens the Start menu shortcut before it has been re-created).
 - `.tools/`, `node_modules/`, `dist/`, `.snaps/` are gitignored.
 
 ## Architecture

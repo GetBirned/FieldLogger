@@ -15,12 +15,23 @@ Everything stays on your computer. There's no server, no cloud and no sign-up.
 
 ## Install (for colleagues)
 
-1. Run `FieldLogger-Setup-1.0.0.exe`.
+1. Run the latest `FieldLogger-Setup-<version>.exe` from the team update folder.
 2. Windows may show **"Windows protected your PC"** because the app isn't
    code-signed. Click **More info → Run anyway**.
 3. Pick an install folder (no admin rights needed). A **FieldLogger** shortcut
    is added to your desktop and Start menu.
 4. Create your profile. You just need a name; a PIN is optional.
+
+### Updates
+
+FieldLogger checks the team update folder when it starts and every few hours. When a new
+version is there, a banner shows what changed; **Update now** saves your work, installs it and
+reopens FieldLogger. A full copy of your data is kept before the new version opens it. Pick or
+change the folder in **Settings → Updates**.
+
+To publish a version: bump `version` in `package.json`, add its entry to `src/lib/changelog.js`,
+run `npm run build`, then `npm run publish-update` (uses `fieldlogger.updateFolder` in
+`package.json`, or pass a folder: `npm run publish-update -- "D:\Shared\FieldLogger"`).
 
 ## Using it
 

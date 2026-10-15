@@ -24,6 +24,12 @@ contextBridge.exposeInMainWorld('fieldlogger', {
     importFile: () => invoke('data:import'),
     exportText: (text, name) => invoke('data:exportText', text, name),
   },
+  updates: {
+    config: () => invoke('updates:config'),
+    setFolder: (folder) => invoke('updates:setFolder', folder),
+    check: () => invoke('updates:check'),
+    install: () => invoke('updates:install'),
+  },
   backups: {
     list: (id) => invoke('backups:list', id),
     restore: (id, key) => invoke('backups:restore', id, key),

@@ -12,6 +12,7 @@ import { ClientsView } from './Clients.js';
 import { NotesView } from './Notes.js';
 import { SettingsView } from './Settings.js';
 import { LogModal } from './LogModal.js';
+import { UpdateBanner, UpdateDialog, useUpdateChecks } from './Updates.js';
 
 const NAV = [
   { id: 'calendar', label: 'Calendar', icon: 'calendar-days', key: '1' },
@@ -23,12 +24,14 @@ const NAV = [
 export function Shell() {
   const { profile, data, readOnly } = useSession();
   const u = useUi();
+  useUpdateChecks();
   const collapsed = data.settings.sidebarCollapsed;
 
   return html`<div class=${cx('shell', collapsed && 'is-collapsed', isElectron && 'is-electron')}>
     <${Sidebar} profile=${profile} data=${data} page=${u.page} collapsed=${collapsed} />
     <main class="main">
       <${Topbar} page=${u.page} data=${data} profile=${profile} />
+      <${UpdateBanner} />
       ${readOnly && html`<div class="readonly-banner" role="status">
         <${Icon} name="lock" size=${15} />
         <span>Read-only. This data was saved by a newer version of FieldLogger, so this version won't change it. Install the latest version to keep working.</span>
@@ -41,6 +44,7 @@ export function Shell() {
       </div>
     </main>
     ${u.log && html`<${LogModal} state=${u.log} />`}
+    <${UpdateDialog} />
     ${u.confirm && html`<${ConfirmDialog} confirm=${u.confirm} />`}
     <${Toasts} toasts=${u.toasts} />
   </div>`;
