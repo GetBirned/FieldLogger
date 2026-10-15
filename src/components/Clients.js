@@ -55,7 +55,7 @@ function ClientList({ data }) {
     .filter((c) => {
       const ql = q.trim().toLowerCase();
       if (!ql) return true;
-      return [c.name, c.kantataProject, c.location, c.erp, ...(c.implementations || []).map((i) => implementationDef(i.product).name), ...(c.contacts || []).map((k) => `${k.name} ${k.email}`)].join(' ').toLowerCase().includes(ql);
+      return [c.name, c.customerCode, c.kantataProject, c.location, c.erp, ...(c.implementations || []).map((i) => implementationDef(i.product).name), ...(c.contacts || []).map((k) => `${k.name} ${k.email}`)].join(' ').toLowerCase().includes(ql);
     })
     .sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name) : (stats[b.id]?.last || 0) - (stats[a.id]?.last || 0) || a.name.localeCompare(b.name)));
 
@@ -127,7 +127,7 @@ function ClientCard({ client: c, stats, index }) {
     <div class="cc-top">
       <${ClientAvatar} client=${c} size=${44} />
       <div class="cc-titles">
-        <span class="cc-name">${c.name}</span>
+        <span class="cc-name-row"><span class="cc-name">${c.name}</span>${c.customerCode && html`<span class="code-tag">${c.customerCode}</span>`}</span>
         <span class="cc-project">${c.kantataProject || 'No Kantata project set'}</span>
       </div>
       ${c.erp && html`<span class="cc-erp" data-tip=${c.erp}><${ErpLogo} erp=${c.erp} logos=${ERP_LOGOS} size=${28} /></span>`}
@@ -212,6 +212,7 @@ function ClientDetail({ client: c, data }) {
         <div class="hero-titles">
           <div class="hero-name-row">
             <h2>${c.name}</h2>
+            ${c.customerCode && html`<button type="button" class="code-tag code-tag-lg" data-tip="Customer code · click to copy" onClick=${() => copyText(c.customerCode, 'Customer code copied')}>${c.customerCode}</button>`}
             <span class=${cx('badge', c.active ? 'badge-live' : 'badge-muted')}>${c.active ? 'Active' : 'Inactive'}</span>
           </div>
           <div class="hero-meta">
@@ -233,6 +234,7 @@ function ClientDetail({ client: c, data }) {
           <${Menu} trigger=${({ toggle }) => html`<${IconButton} icon="ellipsis" label="More" onClick=${toggle} />`} items=${[
             { label: c.active ? 'Mark inactive' : 'Mark active', icon: c.active ? 'archive' : 'archive-restore', run: toggleActive },
             { label: 'Copy Kantata project name', icon: 'copy', run: () => copyText(c.kantataProject || c.name) },
+            c.customerCode && { label: 'Copy customer code', icon: 'copy', run: () => copyText(c.customerCode, 'Customer code copied') },
             c.engagementUrl && { label: 'Copy engagement link', icon: 'link', run: () => copyText(c.engagementUrl, 'Engagement link copied') },
             c.logo && { label: 'Remove logo', icon: 'image', run: () => updateClient(c.id, { logo: null }) },
             '-',
@@ -437,6 +439,7 @@ export function ClientForm({ client, onClose, count = 0 }) {
   const [f, setF] = useState(() => ({
     name: client?.name || '',
     kantataProject: client?.kantataProject || '',
+    customerCode: client?.customerCode || '',
     color: client?.color || PALETTE[count % PALETTE.length],
     active: client ? client.active : true,
     products: [...new Set((client?.implementations || []).map((i) => i.product))],
@@ -517,6 +520,10 @@ export function ClientForm({ client, onClose, count = 0 }) {
           <${ClientAvatar} client=${{ name: f.name || '?', color: f.color, logo: f.logo, logoBg: f.logoBg }} size=${60} />
         <//>
         <${Field} label="Client name" error=${error} class="grow"><input class="input input-lg" value=${f.name} onInput=${(e) => { set('name')(e); setError(''); }} placeholder="e.g. Granite Ridge Paving" autofocus /><//>
+        <${Field} label="Customer code" class="code-field">
+          <input class="input input-lg input-code" value=${f.customerCode} maxlength="8" spellcheck=${false} placeholder="WARD"
+            onInput=${(e) => setF((prev) => ({ ...prev, customerCode: e.currentTarget.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))} />
+        <//>
       </div>
       <div class="logo-row">
         <div class="logo-row-text">

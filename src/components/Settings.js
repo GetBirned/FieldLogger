@@ -247,7 +247,7 @@ function NoteFormat({ data }) {
     st.setHours(14, 0, 0, 0);
     const en = new Date(st.getTime() + 75 * 60000);
     const type = data.actionTypes.find((t) => t.id === 'template') || data.actionTypes[0];
-    const client = data.clients[0] || { name: 'Granite Ridge Paving', kantataProject: 'GRP - Estimate Implementation' };
+    const client = data.clients[0] || { name: 'Granite Ridge Paving', kantataProject: 'GRP - Estimate Implementation', customerCode: 'GRPV' };
     return [
       { label: 'Time range', entry: { start: st.toISOString(), end: en.toISOString(), notes: 'Walked estimators through bid templates' }, type, client },
       { label: 'Timestamp, no notes', entry: { start: new Date(st.getTime() + 2 * 3600000 + 15 * 60000).toISOString(), end: null, minutes: 15, notes: '' }, type: data.actionTypes.find((t) => t.id === 'email') || type, client },

@@ -144,6 +144,7 @@ export const NOTE_TOKENS = [
   { token: '{notes}', label: 'Notes', hint: 'your extra notes' },
   { token: '{client}', label: 'Client', hint: 'Granite Ridge Paving' },
   { token: '{project}', label: 'Kantata project', hint: 'GRP - Implementation' },
+  { token: '{code}', label: 'Customer code', hint: 'GRPV' },
   { token: '{duration}', label: 'Duration', hint: '1h 15m' },
   { token: '{hours}', label: 'Hours', hint: '1.25' },
   { token: '{date}', label: 'Date', hint: '10/14/2026' },

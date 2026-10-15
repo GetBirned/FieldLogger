@@ -221,6 +221,7 @@ export function addClient(fields) {
     active: true,
     color: '#3b82f6',
     kantataProject: '',
+    customerCode: '',
     implementations: [],
     startDate: '',
     goLiveDate: '',

@@ -17,6 +17,7 @@ export function renderLine(entry, { type, client, settings }) {
     notes: (entry.notes || '').replace(/\s*\n+\s*/g, '; ').trim(),
     client: client?.name || 'Internal',
     project: client?.kantataProject || client?.name || 'Internal',
+    code: client?.customerCode || '',
     duration: minutes ? fmtDuration(minutes) : '',
     hours: minutes ? fmtHours(roundHours(minutes, settings?.roundTo, settings?.roundMode)) : '',
     date: fmtDateNumeric(entry.start),

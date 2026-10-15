@@ -32,7 +32,7 @@ Everything stays on your computer. There's no server, no cloud and no sign-up.
 | One-click logging | **Quick log** buttons in the calendar side panel |
 | Copy notes into Kantata | **Kantata Notes**: copy one line, a whole project, or the whole day |
 | Track what's been entered | Tick the checkbox per line, or leave **Check off on copy** on |
-| Clients, POCs, notes | **Clients**: add contacts (star one as POC), write notes, mark active/inactive |
+| Clients, POCs, notes | **Clients**: set a customer code (like WARD), add contacts (star one as POC), write notes, mark active/inactive |
 | Implementations | Pick Estimate, Track, Schedule, Maintain and/or Field Employee for a client, tick off each one's Kantata milestones on the client page, and **Mark complete** when it's done |
 | Client logos | Click (or drop an image on) the client's tile, or paste one with Ctrl+V in Edit client. The logo then shows in Log Action, on the calendar and in Kantata Notes |
 | Engagement link | Paste the client's Kantata / Salesforce DX engagement URL in **Edit client** to get an **Open engagement** button on the client page and in Kantata Notes |

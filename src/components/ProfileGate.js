@@ -153,29 +153,53 @@ function PinUnlock({ profile, onBack }) {
   const [error, setError] = useState(false);
   const [shake, setShake] = useState(false);
   const ref = useRef(null);
+  const latest = useRef('');
+  const signingIn = useRef(false);
+
+  const unlock = () => {
+    if (signingIn.current) return;
+    signingIn.current = true;
+    signIn(profile).catch((err) => { signingIn.current = false; setError(err.message || String(err)); });
+  };
+
+  const reject = () => {
+    setError(true);
+    setShake(true);
+    setPin('');
+    latest.current = '';
+    setTimeout(() => setShake(false), 450);
+    ref.current?.focus();
+  };
+
+  // PINs are 4-8 digits and the length isn't stored, so check quietly from the 4th digit on and
+  // unlock as soon as it matches. A wrong PIN only shows an error on Enter / Unlock, or at 8 digits.
+  const onInput = async (e) => {
+    const value = e.currentTarget.value.replace(/\D/g, '').slice(0, 8);
+    setPin(value);
+    setError(false);
+    latest.current = value;
+    if (value.length < 4) return;
+    const ok = await bridge.profiles.verifyPin(profile.id, value);
+    if (latest.current !== value) return; // more digits were typed while this was checking
+    if (ok) unlock();
+    else if (value.length === 8) reject();
+  };
 
   const submit = async (e) => {
     e?.preventDefault();
-    if (await bridge.profiles.verifyPin(profile.id, pin)) {
-      signIn(profile).catch((err) => setError(err.message || String(err)));
-    } else {
-      setError(true);
-      setShake(true);
-      setPin('');
-      setTimeout(() => setShake(false), 450);
-      ref.current?.focus();
-    }
+    if (await bridge.profiles.verifyPin(profile.id, pin)) unlock();
+    else reject();
   };
 
   return html`<form class=${cx('gate-card gate-pin', shake && 'shake')} onSubmit=${submit} onClick=${() => ref.current?.focus()}>
     <${Avatar} name=${profile.name} color=${profile.color} src=${profile.photo} size=${72} />
     <h2 class="gate-title">Welcome back, ${profile.name.split(' ')[0]}</h2>
-    <p class="muted">Enter your PIN to unlock.</p>
+    <p class="muted">Enter your PIN. You'll be signed in as soon as it's right.</p>
     <div class="pin-dots" aria-hidden="true">
       ${Array.from({ length: Math.max(4, pin.length) }, (_, i) => html`<span class=${cx('pin-dot', i < pin.length && 'is-filled')}></span>`)}
     </div>
     <input ref=${ref} class="pin-hidden" type="password" inputmode="numeric" maxlength="8" autofocus value=${pin}
-      onInput=${(e) => { setPin(e.currentTarget.value.replace(/\D/g, '')); setError(false); }} aria-label="PIN" />
+      onInput=${onInput} aria-label="PIN" />
     ${error && html`<div class="form-error">${typeof error === 'string' ? error : 'Incorrect PIN. Try again.'}</div>`}
     <div class="gate-actions">
       <${Button} variant="ghost" icon="arrow-left" onClick=${onBack}>Switch profile</${Button}>
